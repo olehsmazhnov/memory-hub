@@ -28,7 +28,7 @@ Memory Hub is a Next.js + Supabase app for storing personal notes in folders, wi
 
 ## Tech Stack
 
-- Next.js 14 (App Router)
+- Next.js 15 (App Router)
 - React 18 + TypeScript
 - styled-components
 - Supabase (Auth + Postgres + RLS)
@@ -51,6 +51,7 @@ Set:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `APP_ORIGIN` (canonical app origin for safe server redirects; set to your deployed HTTPS origin in production)
 
 ## Database Setup (Supabase)
 
@@ -58,6 +59,7 @@ Run SQL migrations in order in your Supabase SQL editor:
 
 1. `supabase/migrations/001_init.sql`
 2. `supabase/migrations/002_add_folder_color.sql`
+3. `supabase/migrations/003_enforce_notes_update_folder_ownership.sql`
 
 These migrations create:
 

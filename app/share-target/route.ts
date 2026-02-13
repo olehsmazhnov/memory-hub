@@ -7,8 +7,33 @@ import {
 
 const APP_HOME_PATH = '/';
 
+const getConfiguredAppOrigin = () => {
+  const configuredAppOrigin = process.env.APP_ORIGIN?.trim();
+
+  if (!configuredAppOrigin) {
+    return null;
+  }
+
+  try {
+    const parsedAppOrigin = new URL(configuredAppOrigin);
+    const isHttpProtocol = parsedAppOrigin.protocol === 'http:';
+    const isHttpsProtocol = parsedAppOrigin.protocol === 'https:';
+
+    if (!isHttpProtocol && !isHttpsProtocol) {
+      return null;
+    }
+
+    return parsedAppOrigin.origin;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const configuredAppOrigin = getConfiguredAppOrigin();
+
 const getShareTargetRedirectUrl = (request: NextRequest, searchParams: URLSearchParams) => {
-  const redirectUrl = new URL(APP_HOME_PATH, request.url);
+  const redirectOrigin = configuredAppOrigin ?? request.nextUrl.origin;
+  const redirectUrl = new URL(APP_HOME_PATH, redirectOrigin);
   redirectUrl.search = searchParams.toString();
   return redirectUrl;
 };
@@ -22,7 +47,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.redirect(redirectUrl, 303);
   } catch (_error) {
-    const fallbackUrl = new URL(APP_HOME_PATH, request.url);
+    const fallbackOrigin = configuredAppOrigin ?? request.nextUrl.origin;
+    const fallbackUrl = new URL(APP_HOME_PATH, fallbackOrigin);
     return NextResponse.redirect(fallbackUrl, 303);
   }
 }

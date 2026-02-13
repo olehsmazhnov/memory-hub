@@ -62,8 +62,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body className={manrope.className}>
         <StyledComponentsRegistry>
-          <PwaServiceWorker />
-          {children}
+          <>
+            <PwaServiceWorker />
+            {children}
+          </>
         </StyledComponentsRegistry>
       </body>
     </html>

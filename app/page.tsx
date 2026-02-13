@@ -67,6 +67,9 @@ export default function Page() {
     handleFolderDragLeave,
     handleFolderDragEnd,
     handleFolderDrop,
+    handleFolderTouchStart,
+    handleFolderTouchMove,
+    handleFolderTouchEnd,
     handleStartFolderRename,
     handleCancelFolderRename,
     handleSaveFolderRename,
@@ -306,6 +309,9 @@ export default function Page() {
       onDragLeave={handleFolderDragLeave}
       onDrop={handleFolderDrop}
       onDragEnd={handleFolderDragEnd}
+      onFolderTouchStart={handleFolderTouchStart}
+      onFolderTouchMove={handleFolderTouchMove}
+      onFolderTouchEnd={handleFolderTouchEnd}
       onDeleteFolder={handleDeleteFolder}
       onChangeFolderColor={handleFolderColorChange}
       isSettingsActive={activeTab === CONTENT_TABS.settings}

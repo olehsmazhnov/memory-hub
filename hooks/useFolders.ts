@@ -204,6 +204,53 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
     setDragOverFolderId(null);
   };
 
+  const handleFolderTouchStart = (folderId: string) => {
+    setDraggingFolderId(folderId);
+    setDragOverFolderId(null);
+  };
+
+  const handleFolderTouchMove = (clientX: number, clientY: number) => {
+    if (!draggingFolderId || typeof document === 'undefined') {
+      return;
+    }
+
+    const touchedElement = document.elementFromPoint(clientX, clientY);
+
+    if (!(touchedElement instanceof HTMLElement)) {
+      setDragOverFolderId(null);
+      return;
+    }
+
+    const touchedFolderElement = touchedElement.closest<HTMLElement>('[data-folder-id]');
+    const touchedFolderId = touchedFolderElement?.dataset.folderId ?? null;
+
+    if (!touchedFolderId || touchedFolderId === draggingFolderId) {
+      setDragOverFolderId(null);
+      return;
+    }
+
+    if (dragOverFolderId !== touchedFolderId) {
+      setDragOverFolderId(touchedFolderId);
+    }
+  };
+
+  const handleFolderTouchEnd = async () => {
+    if (!draggingFolderId) {
+      setDragOverFolderId(null);
+      return;
+    }
+
+    const dropTargetFolderId = dragOverFolderId;
+
+    if (!dropTargetFolderId || dropTargetFolderId === draggingFolderId) {
+      setDraggingFolderId(null);
+      setDragOverFolderId(null);
+      return;
+    }
+
+    await handleFolderDrop(dropTargetFolderId);
+  };
+
   const handleStartFolderRename = (folder: Folder) => {
     setEditingFolderId(folder.id);
     setEditingFolderTitle(folder.title);
@@ -294,17 +341,6 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
       return;
     }
 
-    const folderToDelete = folders.find((folder) => folder.id === folderId);
-    const isConfirmed = window.confirm(
-      folderToDelete
-        ? `Delete "${folderToDelete.title}" and all notes in it?`
-        : 'Delete this folder and all notes in it?'
-    );
-
-    if (!isConfirmed) {
-      return;
-    }
-
     setFolderIdBeingDeleted(folderId);
     const { error } = await supabase
       .from('folders')
@@ -370,6 +406,9 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
     handleFolderDragLeave,
     handleFolderDragEnd,
     handleFolderDrop,
+    handleFolderTouchStart,
+    handleFolderTouchMove,
+    handleFolderTouchEnd,
     handleStartFolderRename,
     handleCancelFolderRename,
     handleSaveFolderRename,

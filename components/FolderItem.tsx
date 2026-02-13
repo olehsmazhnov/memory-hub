@@ -34,6 +34,9 @@ type FolderItemProps = {
   onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: () => void;
   onDragEnd: () => void;
+  onTouchReorderStart: (folderId: string) => void;
+  onTouchReorderMove: (clientX: number, clientY: number) => void;
+  onTouchReorderEnd: () => void;
 };
 
 export default function FolderItem({
@@ -62,14 +65,20 @@ export default function FolderItem({
   onDragOver,
   onDragLeave,
   onDrop,
-  onDragEnd
+  onDragEnd,
+  onTouchReorderStart,
+  onTouchReorderMove,
+  onTouchReorderEnd
 }: FolderItemProps) {
   const isFolderBusy = isFolderDeleting || isFolderColorUpdating;
   const folderInitial = folder.title.trim().charAt(0).toUpperCase() || '?';
   const isCollapsedMenuVisible = !isSidebarCollapsed && !isEditing;
+  const isTouchReorderEnabled =
+    !isSidebarCollapsed && !isEditing && !isFolderReordering && !isFolderBusy;
 
   return (
     <FolderItemShell
+      data-folder-id={folder.id}
       $isActive={isActive}
       $isDragging={isDragging}
       $isDragOver={isDragOver}
@@ -82,6 +91,35 @@ export default function FolderItem({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onTouchStart={(event) => {
+        if (!isTouchReorderEnabled || event.touches.length !== 1) {
+          return;
+        }
+
+        onTouchReorderStart(folder.id);
+      }}
+      onTouchMove={(event) => {
+        if (!isTouchReorderEnabled || event.touches.length !== 1) {
+          return;
+        }
+
+        const activeTouch = event.touches[0];
+        onTouchReorderMove(activeTouch.clientX, activeTouch.clientY);
+      }}
+      onTouchEnd={() => {
+        if (!isTouchReorderEnabled) {
+          return;
+        }
+
+        onTouchReorderEnd();
+      }}
+      onTouchCancel={() => {
+        if (!isTouchReorderEnabled) {
+          return;
+        }
+
+        onTouchReorderEnd();
+      }}
     >
       <FolderContent
         title={folder.title}
@@ -283,6 +321,8 @@ const FolderItemShell = styled.div<{
   transform: ${({ $isDragOver }) => ($isDragOver ? 'translateY(-2px)' : 'none')};
   box-shadow: ${({ $isDragOver }) =>
     $isDragOver ? '0 10px 24px rgba(15, 31, 50, 0.12)' : 'none'};
+  touch-action: ${({ $isDragging }) => ($isDragging ? 'none' : 'auto')};
+  user-select: ${({ $isDragging }) => ($isDragging ? 'none' : 'auto')};
 
   &:hover {
     border-color: rgba(42, 158, 244, 0.45);

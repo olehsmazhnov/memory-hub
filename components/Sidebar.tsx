@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DragEvent } from 'react';
+import type { DragEvent, KeyboardEvent } from 'react';
 import { FOLDER_COLOR_OPTIONS } from '../lib/constants/folders';
 import type { Folder } from '../lib/types';
 import { BRAND_SUBTITLE, BRAND_TITLE } from '../lib/constants/branding';
@@ -52,7 +52,10 @@ type SidebarProps = {
   onDragLeave: (event: DragEvent<HTMLDivElement>, folderId: string) => void;
   onDrop: (folderId: string) => void;
   onDragEnd: () => void;
-  onDeleteFolder: (folderId: string) => void;
+  onFolderTouchStart: (folderId: string) => void;
+  onFolderTouchMove: (clientX: number, clientY: number) => void;
+  onFolderTouchEnd: () => void;
+  onDeleteFolder: (folderId: string) => Promise<void> | void;
   onChangeFolderColor: (folderId: string, color: string) => void;
   isSettingsActive: boolean;
   onToggleSettings: () => void;
@@ -92,6 +95,9 @@ export default function Sidebar({
   onDragLeave,
   onDrop,
   onDragEnd,
+  onFolderTouchStart,
+  onFolderTouchMove,
+  onFolderTouchEnd,
   onDeleteFolder,
   onChangeFolderColor,
   isSettingsActive,
@@ -101,8 +107,14 @@ export default function Sidebar({
   isMobileLayout = false
 }: SidebarProps) {
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [folderIdPendingDelete, setFolderIdPendingDelete] = useState<string | null>(null);
   const isFolderSavingRef = useRef(false);
   const isDesktopCollapsed = !isMobileLayout && isSidebarCollapsed;
+  const pendingDeleteFolder = folderIdPendingDelete
+    ? folders.find((folder) => folder.id === folderIdPendingDelete) ?? null
+    : null;
+  const isDeleteModalOpen = Boolean(folderIdPendingDelete);
+  const isDeleteInProgress = folderIdBeingDeleted === folderIdPendingDelete;
 
   useEffect(() => {
     if (isDesktopCollapsed && isCreateFormOpen) {
@@ -118,6 +130,25 @@ export default function Sidebar({
     isFolderSavingRef.current = isFolderSaving;
   }, [isFolderSaving, folderTitle]);
 
+  useEffect(() => {
+    if (!folderIdPendingDelete || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || isDeleteInProgress) {
+        return;
+      }
+
+      setFolderIdPendingDelete(null);
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeyDown);
+    };
+  }, [folderIdPendingDelete, isDeleteInProgress]);
+
   const handleToggleCreateForm = () => {
     if (isDesktopCollapsed) {
       onToggleSidebarCollapse();
@@ -126,6 +157,44 @@ export default function Sidebar({
     }
 
     setIsCreateFormOpen((isCurrentOpen) => !isCurrentOpen);
+  };
+
+  const handleCreateFolderKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isFolderSaving || isFolderReordering) {
+      return;
+    }
+
+    onCreateFolder();
+  };
+
+  const handleDeletePromptOpen = (folderId: string) => {
+    setFolderIdPendingDelete(folderId);
+  };
+
+  const handleDeletePromptClose = () => {
+    if (isDeleteInProgress) {
+      return;
+    }
+
+    setFolderIdPendingDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!folderIdPendingDelete || isDeleteInProgress) {
+      return;
+    }
+
+    const folderIdToDelete = folderIdPendingDelete;
+    await onDeleteFolder(folderIdToDelete);
+    setFolderIdPendingDelete((currentFolderId) =>
+      currentFolderId === folderIdToDelete ? null : currentFolderId
+    );
   };
 
   return (
@@ -207,13 +276,16 @@ export default function Sidebar({
                   onSaveRename={onSaveRename}
                   onToggleMenu={() => onToggleMenu(folder.id)}
                   onCloseMenu={onCloseMenu}
-                  onDelete={() => onDeleteFolder(folder.id)}
+                  onDelete={() => handleDeletePromptOpen(folder.id)}
                   onChangeColor={(color) => onChangeFolderColor(folder.id, color)}
                   onDragStart={() => onDragStart(folder.id)}
                   onDragOver={(event) => onDragOver(event, folder.id)}
                   onDragLeave={(event) => onDragLeave(event, folder.id)}
                   onDrop={() => onDrop(folder.id)}
                   onDragEnd={onDragEnd}
+                  onTouchReorderStart={onFolderTouchStart}
+                  onTouchReorderMove={onFolderTouchMove}
+                  onTouchReorderEnd={onFolderTouchEnd}
                 />
               );
             })}
@@ -244,6 +316,7 @@ export default function Sidebar({
               placeholder="New folder title"
               value={folderTitle}
               onChange={(event) => onFolderTitleChange(event.target.value)}
+              onKeyDown={handleCreateFolderKeyDown}
             />
             <FolderColorPicker>
               {FOLDER_COLOR_OPTIONS.map((colorOption) => (
@@ -270,6 +343,47 @@ export default function Sidebar({
           {isCreateFormOpen ? 'x' : '+'}
         </MobileAddButton>
       </MobileComposerArea>
+
+      {isDeleteModalOpen ? (
+        <DeleteOverlay
+          role="presentation"
+          onClick={handleDeletePromptClose}
+        >
+          <DeleteDialog
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-folder-dialog-title"
+            aria-describedby="delete-folder-dialog-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <DeleteTitle id="delete-folder-dialog-title">
+              {pendingDeleteFolder
+                ? `Delete "${pendingDeleteFolder.title}" and all notes in it?`
+                : 'Delete this folder and all notes in it?'}
+            </DeleteTitle>
+            <DeleteDescription id="delete-folder-dialog-description">
+              This action is permanent and cannot be undone.
+            </DeleteDescription>
+            <DeleteActions>
+              <DeleteActionButton
+                type="button"
+                onClick={handleDeletePromptClose}
+                disabled={isDeleteInProgress}
+              >
+                Cancel
+              </DeleteActionButton>
+              <DeleteActionButton
+                type="button"
+                $isDanger
+                onClick={handleDeleteConfirm}
+                disabled={isDeleteInProgress}
+              >
+                {isDeleteInProgress ? 'Deleting...' : 'Delete'}
+              </DeleteActionButton>
+            </DeleteActions>
+          </DeleteDialog>
+        </DeleteOverlay>
+      ) : null}
     </SidebarShell>
   );
 }
@@ -460,5 +574,73 @@ const MobileAddButton = styled.button`
   &:hover {
     background: var(--accent-dark);
     transform: translateY(-1px);
+  }
+`;
+
+const DeleteOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(14, 24, 38, 0.42);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+`;
+
+const DeleteDialog = styled.div`
+  width: min(420px, 100%);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 20px 46px rgba(15, 31, 50, 0.22);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const DeleteTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+`;
+
+const DeleteDescription = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+`;
+
+const DeleteActions = styled.div`
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const DeleteActionButton = styled.button<{ $isDanger?: boolean }>`
+  min-width: 108px;
+  border-radius: 12px;
+  border: 1px solid ${({ $isDanger }) => ($isDanger ? 'rgba(217, 84, 77, 0.35)' : 'var(--border)')};
+  background: ${({ $isDanger }) => ($isDanger ? 'var(--danger)' : '#fff')};
+  color: ${({ $isDanger }) => ($isDanger ? '#fff' : 'var(--text)')};
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+
+  &:hover:enabled {
+    transform: translateY(-1px);
+    filter: brightness(0.97);
+    border-color: ${({ $isDanger }) => ($isDanger ? 'rgba(217, 84, 77, 0.55)' : 'rgba(42, 158, 244, 0.45)')};
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 `;

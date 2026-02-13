@@ -1,5 +1,6 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import styled from 'styled-components';
 import { MIN_PASSWORD_LENGTH } from '../lib/constants/ui';
 import { PrimaryButton, SecondaryButton, TextInput } from './ui';
@@ -34,10 +35,14 @@ export default function SettingsPanel({
   isAuthWorking
 }: SettingsPanelProps) {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown';
+  const handleSaveSettingsSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSaveSettings();
+  };
 
   return (
     <ContentScrollArea>
-      <SettingsForm>
+      <SettingsForm onSubmit={handleSaveSettingsSubmit}>
         <FieldGroup>
           <FieldLabel htmlFor="settings-email">Email</FieldLabel>
           <TextInput
@@ -84,10 +89,10 @@ export default function SettingsPanel({
           Changing email sends a confirmation link. Passwords must be at least {MIN_PASSWORD_LENGTH} characters.
         </SettingsHint>
         <SettingsActions>
-          <PrimaryButton onClick={onSaveSettings} disabled={isSettingsSaving}>
+          <PrimaryButton type="submit" disabled={isSettingsSaving}>
             Save settings
           </PrimaryButton>
-          <SecondaryButton onClick={onSignOut} disabled={isAuthWorking}>
+          <SecondaryButton type="button" onClick={onSignOut} disabled={isAuthWorking}>
             Sign out
           </SecondaryButton>
         </SettingsActions>
@@ -113,7 +118,7 @@ const ContentScrollArea = styled.div`
   }
 `;
 
-const SettingsForm = styled.div`
+const SettingsForm = styled.form`
   display: flex;
   flex-direction: column;
   gap: 16px;

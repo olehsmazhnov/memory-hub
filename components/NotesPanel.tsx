@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import styled from 'styled-components';
 import type { Note } from '../lib/types';
 import { NOTES_VIEW, type NotesView } from '../lib/constants/tabs';
@@ -84,6 +84,20 @@ export default function NotesPanel({
     isNoteSavingRef.current = isNoteSaving;
   }, [isNoteSaving, noteContent]);
 
+  const handleNoteInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isNoteSaving || !isFolderSelected) {
+      return;
+    }
+
+    onCreateNote();
+  };
+
   return (
     <PanelShell>
       {!isMobileLayout ? (
@@ -114,6 +128,7 @@ export default function NotesPanel({
             placeholder={activeFolderTitle ? 'Write a note...' : 'Pick a folder to start writing'}
             value={noteContent}
             onChange={(event) => onNoteContentChange(event.target.value)}
+            onKeyDown={handleNoteInputKeyDown}
             disabled={!isFolderSelected}
           />
           <NoteSendButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
@@ -171,6 +186,7 @@ export default function NotesPanel({
                 placeholder={activeFolderTitle ? 'Write a note...' : 'Pick a folder to start writing'}
                 value={noteContent}
                 onChange={(event) => onNoteContentChange(event.target.value)}
+                onKeyDown={handleNoteInputKeyDown}
                 disabled={!isFolderSelected}
               />
               <PrimaryButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>

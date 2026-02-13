@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import styled from 'styled-components';
 import { BRAND_SUBTITLE, BRAND_TITLE, AUTH_RIGHT_SUBTITLE, AUTH_RIGHT_TITLE } from '../lib/constants/branding';
 import { EyeIcon, EyeOffIcon } from './Icons';
@@ -16,6 +16,10 @@ export default function AuthLayout({ onSignIn, onSignUp, isAuthWorking }: AuthLa
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const handleSignInSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSignIn(email, password);
+  };
 
   return (
     <AuthGrid>
@@ -27,38 +31,40 @@ export default function AuthLayout({ onSignIn, onSignUp, isAuthWorking }: AuthLa
         <AuthCard>
           <CardTitle>Welcome back</CardTitle>
           <MutedText>Sign in or create an account to start.</MutedText>
-          <FormStack>
-            <AuthTextInput
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <PasswordInputWrap>
-              <PasswordInput
-                type={isPasswordVisible ? 'text' : 'password'}
-                placeholder="Password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+          <AuthForm onSubmit={handleSignInSubmit}>
+            <FormStack>
+              <AuthTextInput
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
-              <PasswordToggleButton
-                type="button"
-                aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
-                aria-pressed={isPasswordVisible}
-                onClick={() => setIsPasswordVisible((isCurrentPasswordVisible) => !isCurrentPasswordVisible)}
-              >
-                {isPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
-              </PasswordToggleButton>
-            </PasswordInputWrap>
-          </FormStack>
-          <ButtonRow>
-            <PrimaryButton onClick={() => onSignIn(email, password)} disabled={isAuthWorking}>
-              Sign in
-            </PrimaryButton>
-            <SecondaryButton onClick={() => onSignUp(email, password)} disabled={isAuthWorking}>
-              Sign up
-            </SecondaryButton>
-          </ButtonRow>
+              <PasswordInputWrap>
+                <PasswordInput
+                  type={isPasswordVisible ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <PasswordToggleButton
+                  type="button"
+                  aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                  aria-pressed={isPasswordVisible}
+                  onClick={() => setIsPasswordVisible((isCurrentPasswordVisible) => !isCurrentPasswordVisible)}
+                >
+                  {isPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
+                </PasswordToggleButton>
+              </PasswordInputWrap>
+            </FormStack>
+            <ButtonRow>
+              <PrimaryButton type="submit" disabled={isAuthWorking}>
+                Sign in
+              </PrimaryButton>
+              <SecondaryButton type="button" onClick={() => onSignUp(email, password)} disabled={isAuthWorking}>
+                Sign up
+              </SecondaryButton>
+            </ButtonRow>
+          </AuthForm>
         </AuthCard>
       </AuthSidebar>
       <AuthRight>
@@ -134,6 +140,12 @@ const CardTitle = styled.h2`
   margin: 0;
   font-size: 22px;
   font-weight: 600;
+`;
+
+const AuthForm = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 `;
 
 const FormStack = styled.div`

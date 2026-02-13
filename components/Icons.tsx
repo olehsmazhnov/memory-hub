@@ -48,3 +48,30 @@ export const MenuIcon = () => (
     />
   </ViewIcon>
 );
+
+export const EyeIcon = () => (
+  <ViewIcon viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M2.7 12s3.5-6 9.3-6 9.3 6 9.3 6-3.5 6-9.3 6-9.3-6-9.3-6Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.6" />
+  </ViewIcon>
+);
+
+export const EyeOffIcon = () => (
+  <ViewIcon viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M2.7 12s3.5-6 9.3-6c2.2 0 4.1.8 5.7 1.9M21.3 12s-3.5 6-9.3 6c-2.2 0-4.1-.8-5.7-1.9"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+    <path d="M4 4l16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </ViewIcon>
+);

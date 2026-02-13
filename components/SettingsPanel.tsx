@@ -33,6 +33,8 @@ export default function SettingsPanel({
   isSettingsSaving,
   isAuthWorking
 }: SettingsPanelProps) {
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown';
+
   return (
     <ContentScrollArea>
       <SettingsForm>
@@ -89,6 +91,7 @@ export default function SettingsPanel({
             Sign out
           </SecondaryButton>
         </SettingsActions>
+        <SettingsVersion>Version {appVersion}</SettingsVersion>
       </SettingsForm>
     </ContentScrollArea>
   );
@@ -142,4 +145,10 @@ const SettingsActions = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+`;
+
+const SettingsVersion = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
 `;

@@ -1,3 +1,4 @@
+const packageJson = require('./package.json');
 const isProduction = process.env.NODE_ENV === 'production';
 
 const scriptSourceValue = isProduction
@@ -52,6 +53,9 @@ const securityHeaders = [
 const nextConfig = {
   compiler: {
     styledComponents: true
+  },
+  env: {
+    NEXT_PUBLIC_APP_VERSION: packageJson.version
   },
   async headers() {
     return [

@@ -59,8 +59,8 @@ const Toast = styled.div<{ $isError?: boolean }>`
   gap: 16px;
   padding: 12px 16px;
   border-radius: 14px;
-  border: 1px solid ${({ $isError }) => ($isError ? 'rgba(217, 84, 77, 0.45)' : 'rgba(42, 158, 244, 0.4)')};
-  background: ${({ $isError }) => ($isError ? 'rgba(217, 84, 77, 0.12)' : 'rgba(42, 158, 244, 0.12)')};
+  border: 1px solid ${({ $isError }) => ($isError ? '#d9544d' : '#2a9ef4')};
+  background: ${({ $isError }) => ($isError ? '#ffe9e8' : '#e9f5ff')};
   color: ${({ $isError }) => ($isError ? 'var(--danger)' : 'var(--accent-dark)')};
   box-shadow: 0 12px 30px rgba(15, 31, 50, 0.15);
   min-width: 240px;

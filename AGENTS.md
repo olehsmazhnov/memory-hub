@@ -30,3 +30,4 @@
 - validate input parameters at function boundaries
 - if u change sql, add migrations in different file separatly, plus make one big if I need to start from begininng
 - write very secure code - it should pass security checks
+- update version in package.json and next.config.js each time you make changes

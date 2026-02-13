@@ -22,18 +22,13 @@ import { getSharedDraft, getSharedPayloadFromSearchParams } from '../lib/utils/s
 
 const MOBILE_BREAKPOINT_PX = 720;
 const MOBILE_NAV_HEIGHT_PX = 76;
+const MOBILE_NAV_SIDE_GUTTER_PX = 20;
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<ContentTab>(CONTENT_TABS.notes);
   const [notesView, setNotesView] = useState<NotesView>(NOTES_VIEW.list);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches;
-  });
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileFolderListVisible, setIsMobileFolderListVisible] = useState(true);
 
   const { errorMessage, infoMessage, setErrorMessage, setInfoMessage, clearMessages } =
@@ -133,6 +128,8 @@ export default function Page() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`);
+    setIsMobileViewport(mediaQuery.matches);
+
     const handleMediaQueryChange = (event: MediaQueryListEvent) => {
       setIsMobileViewport(event.matches);
     };
@@ -553,8 +550,8 @@ const MobileFolderLabel = styled.span`
 
 const MobileBottomNav = styled.nav`
   position: fixed;
-  left: 12px;
-  right: 12px;
+  left: calc(${MOBILE_NAV_SIDE_GUTTER_PX}px + env(safe-area-inset-left));
+  right: calc(${MOBILE_NAV_SIDE_GUTTER_PX}px + env(safe-area-inset-right));
   bottom: calc(12px + env(safe-area-inset-bottom));
   border-radius: 20px;
   border: 1px solid var(--border);

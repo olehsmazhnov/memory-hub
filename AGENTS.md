@@ -1,0 +1,31 @@
+## Code rules
+- if it is boolean variable, use `is` prefix
+- use styledComponents for styling and put it in the bottom of file where it located
+- use export default for components if its possible
+- follow semantic versioning for releases
+- keep commits small and focused
+- write clear, concise commit messages
+- review code changes before committing
+- document new features and API changes
+- maintain consistent code style and formatting
+- use meaningful variable and function names
+- avoid magic numbers and strings where possible
+- keep documentation up to date with code changes
+- consider performance implications of new code
+- handle errors gracefully and provide meaningful error messages
+- use descriptive names for variables, functions, and classes
+- comment complex logic to improve readability
+- use small components and functions, avoid big monoliths
+- prefer functional programming patterns where appropriate
+- minimize global state and side effects
+- use TypeScript for better type safety
+- follow consistent indentation and formatting rules
+- use consistent naming conventions (camelCase for variables, PascalCase for classes)
+- organize code into logical modules and directories
+- avoid deeply nested structures and long functions
+- prefer early returns and guard clauses to reduce nesting
+- use immutable data structures where appropriate
+- favor pure functions over impure ones when possible
+- use consistent error handling patterns throughout the codebase
+- validate input parameters at function boundaries
+- if u change sql, add migrations in different file separatly, plus make one big if I need to start from begininng

@@ -1,0 +1,69 @@
+You are a senior full-stack engineer. Build the WEB part of an MVP first.
+Took design from Telegram App
+
+Goal:
+Create a minimal “text archive” web app where a user can:
+1) Sign up / log in
+2) Create folders
+3) Add text notes inside a folder
+That’s it. Text only for now (no links, no images, no share extension).
+
+Tech requirements:
+- Next.js (App Router) + TypeScript
+- Supabase (Auth + Postgres)
+- Keep architecture simple and production-clean
+- No over-engineering
+
+Functional requirements:
+- Auth:
+  - Email/password sign up
+  - Email/password sign in
+  - Sign out
+- Folders:
+  - Create folder (title required)
+  - List user folders (newest first)
+  - Select active folder
+- Notes (text only):
+  - Create note in selected folder (non-empty content)
+  - List notes for selected folder (chronological)
+- Data isolation:
+  - Users must only access their own folders/notes (RLS)
+
+Database schema:
+- folders: id (uuid pk), user_id (uuid fk auth.users), title (text), created_at (timestamptz)
+- notes: id (uuid pk), folder_id (uuid fk folders), user_id (uuid fk auth.users), content (text), created_at (timestamptz)
+
+Security:
+- Enable RLS on both tables
+- Add policies for select/insert/update/delete restricted to auth.uid() = user_id
+- For note insert, ensure folder belongs to same user
+
+Project output required:
+1) Setup commands
+2) Full SQL migration (tables, indexes, RLS policies)
+3) Next.js code scaffold with:
+   - Supabase client
+   - Single MVP page (or small component split) for auth + folders + notes
+4) `.env.local.example`
+5) Run instructions
+6) Quick test checklist
+
+UI requirements:
+- Very simple 2-column layout:
+  - Left: folders + create folder input
+  - Right: notes list + add note input
+- Basic empty states and error messages
+
+Non-goals:
+- No mobile app
+- No links/photos/files
+- No realtime subscriptions yet
+- No i18n and no advanced styling
+
+Execution style:
+- Implement in small verifiable steps.
+- After each step, show:
+  - files created/changed
+  - exact code
+  - how to verify it works
+- If something fails, pick the most stable fix and continue until app runs locally.

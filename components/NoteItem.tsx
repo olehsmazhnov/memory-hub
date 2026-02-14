@@ -13,8 +13,15 @@ type NoteItemProps = {
   onPreviewLoad?: () => void;
   isMenuOpen: boolean;
   isDeleting: boolean;
+  isEditing: boolean;
+  isUpdating: boolean;
+  editingContent: string;
+  onEditingContentChange: (value: string) => void;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
   onDelete: () => void;
 };
 
@@ -23,8 +30,15 @@ export default function NoteItem({
   onPreviewLoad,
   isMenuOpen,
   isDeleting,
+  isEditing,
+  isUpdating,
+  editingContent,
+  onEditingContentChange,
   onToggleMenu,
   onCloseMenu,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
   onDelete
 }: NoteItemProps) {
   const videoId = getYouTubeVideoId(note.content);
@@ -32,59 +46,113 @@ export default function NoteItem({
   const thumbnailUrl = videoId ? getYouTubeThumbnailUrl(videoId) : '';
   const watchUrl = videoId ? getYouTubeWatchUrl(videoId) : '';
   const contentLink = getContentLink(note.content);
+  const isNoteBusy = isDeleting || isUpdating;
 
   return (
     <NoteCard>
       <NoteHeader>
-        <NoteMenu
-          tabIndex={-1}
-          onBlur={(event) => {
-            const nextTarget = event.relatedTarget as Node | null;
-            if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
-              onCloseMenu();
-            }
-          }}
-        >
-          <NoteMenuButton
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={isMenuOpen}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleMenu();
+        {!isEditing ? (
+          <NoteMenu
+            tabIndex={-1}
+            onBlur={(event) => {
+              const nextTarget = event.relatedTarget as Node | null;
+              if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+                onCloseMenu();
+              }
             }}
           >
-            <MenuIcon />
-          </NoteMenuButton>
-          {isMenuOpen ? (
-            <NoteMenuList role="menu">
-              <NoteMenuItem
-                type="button"
-                role="menuitem"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete();
-                }}
-                disabled={isDeleting}
-              >
-                Delete
-              </NoteMenuItem>
-            </NoteMenuList>
-          ) : null}
-        </NoteMenu>
+            <NoteMenuButton
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleMenu();
+              }}
+              disabled={isNoteBusy}
+            >
+              <MenuIcon />
+            </NoteMenuButton>
+            {isMenuOpen ? (
+              <NoteMenuList role="menu">
+                <NoteMenuItem
+                  type="button"
+                  role="menuitem"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCloseMenu();
+                    onStartEdit();
+                  }}
+                  disabled={isNoteBusy}
+                >
+                  Edit
+                </NoteMenuItem>
+                <NoteMenuDangerItem
+                  type="button"
+                  role="menuitem"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onCloseMenu();
+                    onDelete();
+                  }}
+                  disabled={isNoteBusy}
+                >
+                  Delete
+                </NoteMenuDangerItem>
+              </NoteMenuList>
+            ) : null}
+          </NoteMenu>
+        ) : null}
       </NoteHeader>
-      {isYouTubePreview ? (
-        <VideoPreview href={watchUrl} target="_blank" rel="noreferrer">
-          <VideoThumbnail src={thumbnailUrl} alt={YOUTUBE_PREVIEW_ALT} loading="lazy" onLoad={onPreviewLoad} />
-          <PreviewBadge>YT</PreviewBadge>
-        </VideoPreview>
-      ) : null}
-      {contentLink ? (
-        <NoteLink href={contentLink} target="_blank" rel="noreferrer">
-          {note.content}
-        </NoteLink>
+      {isEditing ? (
+        <>
+          <NoteEditTextArea
+            value={editingContent}
+            onChange={(event) => onEditingContentChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onCancelEdit();
+              }
+
+              if ((event.key === 'Enter' && event.ctrlKey) || (event.key === 'Enter' && event.metaKey)) {
+                event.preventDefault();
+                onSaveEdit();
+              }
+            }}
+            disabled={isNoteBusy}
+            autoFocus
+          />
+          <NoteEditActions>
+            <NoteActionButton type="button" onClick={onSaveEdit} disabled={isNoteBusy}>
+              {isUpdating ? 'Saving...' : 'Save'}
+            </NoteActionButton>
+            <NoteActionButton type="button" onClick={onCancelEdit} disabled={isNoteBusy}>
+              Cancel
+            </NoteActionButton>
+          </NoteEditActions>
+        </>
       ) : (
-        <NoteContent>{note.content}</NoteContent>
+        <>
+          {isYouTubePreview ? (
+            <VideoPreview href={watchUrl} target="_blank" rel="noreferrer">
+              <VideoThumbnail
+                src={thumbnailUrl}
+                alt={YOUTUBE_PREVIEW_ALT}
+                loading="lazy"
+                onLoad={onPreviewLoad}
+              />
+              <PreviewBadge>YT</PreviewBadge>
+            </VideoPreview>
+          ) : null}
+          {contentLink ? (
+            <NoteLink href={contentLink} target="_blank" rel="noreferrer">
+              {note.content}
+            </NoteLink>
+          ) : (
+            <NoteContent>{note.content}</NoteContent>
+          )}
+        </>
       )}
       <NoteMeta>{formatDateTime(note.created_at)}</NoteMeta>
     </NoteCard>
@@ -129,6 +197,11 @@ const NoteMenuButton = styled.button`
     color: var(--accent-dark);
     background: rgba(42, 158, 244, 0.12);
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const NoteMenuList = styled.div`
@@ -161,6 +234,63 @@ const NoteMenuItem = styled.button`
   &:hover:enabled {
     background: rgba(42, 158, 244, 0.12);
     color: var(--accent-dark);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const NoteMenuDangerItem = styled(NoteMenuItem)`
+  color: var(--danger);
+
+  &:hover:enabled {
+    background: rgba(217, 84, 77, 0.12);
+    color: var(--danger);
+  }
+`;
+
+const NoteEditTextArea = styled.textarea`
+  width: 100%;
+  min-height: 110px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(42, 158, 244, 0.15);
+  }
+
+  @media (max-width: 720px) {
+    font-size: 13px;
+  }
+`;
+
+const NoteEditActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+`;
+
+const NoteActionButton = styled.button`
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  &:hover:enabled {
+    border-color: rgba(42, 158, 244, 0.45);
+    transform: translateY(-1px);
   }
 
   &:disabled {

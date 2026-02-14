@@ -4,15 +4,20 @@ Memory Hub is a Next.js + Supabase app for storing personal notes in folders, wi
 
 ## Features
 
-- Email/password sign up, sign in, sign out (Supabase Auth)
+- Email/password sign up, sign in, sign out (Supabase Auth) with duplicate email check on sign up
+- Sign in with Google (Supabase OAuth) - temporarily disabled in UI
 - Folder management:
   - Create folder
   - Rename folder
   - Reorder folders with drag and drop
   - Change folder color
+  - Show message count per folder
+  - Update folders with swipe down on mobile
   - Delete folder
 - Notes:
   - Create note in selected folder
+  - Show notes count in opened folder
+  - Edit note
   - Delete note
   - Switch between list and bricks view
 - Link handling:
@@ -20,10 +25,12 @@ Memory Hub is a Next.js + Supabase app for storing personal notes in folders, wi
   - YouTube thumbnail preview for YouTube links
 - Account settings:
   - Update email
+  - Mask email value by default in settings with blur filter
   - Update username metadata
   - Update password
 - PWA:
   - Installable on mobile
+  - Swipe left/right navigation between sections on mobile
   - Web Share Target endpoint for sharing links (for example from YouTube) into the app draft
 
 ## Tech Stack

@@ -9,10 +9,16 @@ import { BrandGroup, BrandSubtitle, BrandTitle, MutedText, PrimaryButton, Second
 type AuthLayoutProps = {
   onSignIn: (email: string, password: string) => void;
   onSignUp: (email: string, password: string) => void;
+  // onSignInWithGoogle: () => void;
   isAuthWorking: boolean;
 };
 
-export default function AuthLayout({ onSignIn, onSignUp, isAuthWorking }: AuthLayoutProps) {
+export default function AuthLayout({
+  onSignIn,
+  onSignUp,
+  // onSignInWithGoogle,
+  isAuthWorking
+}: AuthLayoutProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -64,6 +70,13 @@ export default function AuthLayout({ onSignIn, onSignUp, isAuthWorking }: AuthLa
                 Sign up
               </SecondaryButton>
             </ButtonRow>
+            {/* <OAuthButton
+              type="button"
+              onClick={onSignInWithGoogle}
+              disabled={isAuthWorking}
+            >
+              Continue with Google
+            </OAuthButton> */}
           </AuthForm>
         </AuthCard>
       </AuthSidebar>
@@ -224,6 +237,10 @@ const ButtonRow = styled.div`
     flex-direction: column;
   }
 `;
+
+// const OAuthButton = styled(SecondaryButton)`
+//   width: 100%;
+// `;
 
 const AuthRight = styled.section`
   background: linear-gradient(160deg, rgba(42, 158, 244, 0.12), rgba(28, 127, 209, 0.08));

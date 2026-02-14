@@ -1,6 +1,7 @@
 export const PWA_BACKGROUND_COLOR = '#f5f8ff';
 export const PWA_THEME_COLOR = '#f5f8ff';
 export const PWA_DISPLAY_MODE = 'standalone';
+export const PWA_ORIENTATION = 'portrait';
 export const PWA_SCOPE = '/';
 export const PWA_START_URL = '/';
 export const PWA_SHORT_NAME = 'MemHub';

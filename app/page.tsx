@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import AuthLayout from '../components/AuthLayout';
 import NotesPanel from '../components/NotesPanel';
@@ -23,6 +23,10 @@ import { getSharedDraft, getSharedPayloadFromSearchParams } from '../lib/utils/s
 const MOBILE_BREAKPOINT_PX = 720;
 const MOBILE_NAV_HEIGHT_PX = 76;
 const MOBILE_NAV_SIDE_GUTTER_PX = 20;
+const MOBILE_SWIPE_TRIGGER_PX = 72;
+const MOBILE_SWIPE_VERTICAL_TOLERANCE_PX = 52;
+const MOBILE_SWIPE_CANCEL_VERTICAL_PX = 72;
+const MOBILE_SWIPE_PREVENT_DEFAULT_PX = 18;
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<ContentTab>(CONTENT_TABS.notes);
@@ -30,6 +34,9 @@ export default function Page() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileFolderListVisible, setIsMobileFolderListVisible] = useState(true);
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+  const isSwipeNavigationTrackingRef = useRef(false);
 
   const { errorMessage, infoMessage, setErrorMessage, setInfoMessage, clearMessages } =
     useToastMessages();
@@ -74,7 +81,9 @@ export default function Page() {
     handleCancelFolderRename,
     handleSaveFolderRename,
     handleFolderColorChange,
-    handleDeleteFolder
+    handleDeleteFolder,
+    handleFolderMessageCountChange,
+    handleRefreshFolders
   } = useFolders({
     session,
     onError: setErrorMessage,
@@ -88,17 +97,25 @@ export default function Page() {
     setNoteContent,
     isNotesLoading,
     isNoteSaving,
+    isNoteUpdating,
     openNoteMenuId,
     setOpenNoteMenuId,
     noteIdBeingDeleted,
+    editingNoteId,
+    editingNoteContent,
+    setEditingNoteContent,
     handleCreateNote,
-    handleDeleteNote
+    handleDeleteNote,
+    handleStartNoteEdit,
+    handleCancelNoteEdit,
+    handleSaveNoteEdit
   } = useNotes({
     session,
     activeFolderId,
     onError: setErrorMessage,
     onInfo: setInfoMessage,
-    clearMessages
+    clearMessages,
+    onFolderMessageCountChange: handleFolderMessageCountChange
   });
 
   const {
@@ -230,12 +247,122 @@ export default function Page() {
     setActiveTab(CONTENT_TABS.settings);
   };
 
+  const resetMobileSwipeTracking = () => {
+    swipeStartXRef.current = null;
+    swipeStartYRef.current = null;
+    isSwipeNavigationTrackingRef.current = false;
+  };
+
+  const isMobileSwipeTargetAllowed = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    const blockedTargetSelector =
+      'input, textarea, select, button, a, [role="button"], [contenteditable="true"]';
+
+    return !target.closest(blockedTargetSelector);
+  };
+
+  const handleMobileNavigationSwipeStart = (event: TouchEvent<HTMLElement>) => {
+    if (!isMobileViewport || event.touches.length !== 1) {
+      return;
+    }
+
+    if (!isMobileSwipeTargetAllowed(event.target)) {
+      resetMobileSwipeTracking();
+      return;
+    }
+
+    const initialTouch = event.touches[0];
+    swipeStartXRef.current = initialTouch.clientX;
+    swipeStartYRef.current = initialTouch.clientY;
+    isSwipeNavigationTrackingRef.current = true;
+  };
+
+  const handleMobileNavigationSwipeMove = (event: TouchEvent<HTMLElement>) => {
+    if (!isSwipeNavigationTrackingRef.current) {
+      return;
+    }
+
+    const swipeStartX = swipeStartXRef.current;
+    const swipeStartY = swipeStartYRef.current;
+    const activeTouch = event.touches[0];
+
+    if (swipeStartX === null || swipeStartY === null || !activeTouch) {
+      resetMobileSwipeTracking();
+      return;
+    }
+
+    const swipeDeltaX = activeTouch.clientX - swipeStartX;
+    const swipeDeltaY = activeTouch.clientY - swipeStartY;
+
+    if (
+      Math.abs(swipeDeltaY) > MOBILE_SWIPE_CANCEL_VERTICAL_PX &&
+      Math.abs(swipeDeltaY) > Math.abs(swipeDeltaX)
+    ) {
+      resetMobileSwipeTracking();
+      return;
+    }
+
+    if (
+      Math.abs(swipeDeltaX) > MOBILE_SWIPE_PREVENT_DEFAULT_PX &&
+      Math.abs(swipeDeltaX) > Math.abs(swipeDeltaY) &&
+      event.cancelable
+    ) {
+      event.preventDefault();
+    }
+  };
+
+  const handleMobileNavigationSwipeEnd = (event: TouchEvent<HTMLElement>) => {
+    if (!isSwipeNavigationTrackingRef.current) {
+      return;
+    }
+
+    const swipeStartX = swipeStartXRef.current;
+    const swipeStartY = swipeStartYRef.current;
+    const changedTouch = event.changedTouches[0];
+    resetMobileSwipeTracking();
+
+    if (swipeStartX === null || swipeStartY === null || !changedTouch) {
+      return;
+    }
+
+    const swipeDeltaX = changedTouch.clientX - swipeStartX;
+    const swipeDeltaY = changedTouch.clientY - swipeStartY;
+
+    if (
+      Math.abs(swipeDeltaX) < MOBILE_SWIPE_TRIGGER_PX ||
+      Math.abs(swipeDeltaY) > MOBILE_SWIPE_VERTICAL_TOLERANCE_PX
+    ) {
+      return;
+    }
+
+    if (swipeDeltaX < 0) {
+      if (activeTab !== CONTENT_TABS.settings) {
+        setActiveTab(CONTENT_TABS.settings);
+      }
+      return;
+    }
+
+    if (activeTab === CONTENT_TABS.settings) {
+      setActiveTab(CONTENT_TABS.notes);
+      setIsMobileFolderListVisible(true);
+      return;
+    }
+
+    if (activeTab === CONTENT_TABS.notes && !isMobileFolderListVisible) {
+      setIsMobileFolderListVisible(true);
+    }
+  };
+
   const isMobileFoldersTabActive = activeTab === CONTENT_TABS.notes;
   const isMobileSettingsTabActive = activeTab === CONTENT_TABS.settings;
 
   const notesPanel = (
     <NotesPanel
       activeFolderTitle={activeFolder?.title ?? null}
+      activeFolderNoteCount={activeFolder?.messageCount ?? 0}
       noteContent={noteContent}
       onNoteContentChange={setNoteContent}
       onCreateNote={handleCreateNote}
@@ -251,6 +378,13 @@ export default function Page() {
       onCloseNoteMenu={() => setOpenNoteMenuId(null)}
       onDeleteNote={handleDeleteNote}
       noteIdBeingDeleted={noteIdBeingDeleted}
+      editingNoteId={editingNoteId}
+      editingNoteContent={editingNoteContent}
+      onEditingNoteContentChange={setEditingNoteContent}
+      onStartEditNote={handleStartNoteEdit}
+      onCancelEditNote={handleCancelNoteEdit}
+      onSaveEditNote={handleSaveNoteEdit}
+      isNoteUpdating={isNoteUpdating}
       scrollAnchorRef={notesAnchorRef}
       onPreviewLoad={scrollToBottom}
       isFolderSelected={Boolean(activeFolderId)}
@@ -314,6 +448,7 @@ export default function Page() {
       onFolderTouchEnd={handleFolderTouchEnd}
       onDeleteFolder={handleDeleteFolder}
       onChangeFolderColor={handleFolderColorChange}
+      onRefreshFolders={handleRefreshFolders}
       isSettingsActive={activeTab === CONTENT_TABS.settings}
       onToggleSettings={handleToggleSettings}
       isSidebarCollapsed={isSidebarCollapsed}
@@ -334,7 +469,13 @@ export default function Page() {
           </CenteredScreen>
         ) : session ? (
           <>
-            <MainGrid $isSidebarCollapsed={isSidebarCollapsed}>
+            <MainGrid
+              $isSidebarCollapsed={isSidebarCollapsed}
+              onTouchStart={handleMobileNavigationSwipeStart}
+              onTouchMove={handleMobileNavigationSwipeMove}
+              onTouchEnd={handleMobileNavigationSwipeEnd}
+              onTouchCancel={resetMobileSwipeTracking}
+            >
               {isMobileViewport ? (
                 activeTab === CONTENT_TABS.settings ? (
                   <ContentShell>{settingsPanel}</ContentShell>
@@ -352,6 +493,9 @@ export default function Page() {
                       <MobileFolderInfo>
                         {activeFolder ? <MobileFolderDot $color={activeFolder.color} /> : null}
                         <MobileFolderLabel>{activeFolder?.title ?? 'Selected folder'}</MobileFolderLabel>
+                        {activeFolder ? (
+                          <MobileFolderCount>{activeFolder.messageCount}</MobileFolderCount>
+                        ) : null}
                       </MobileFolderInfo>
                     </MobileNotesHeader>
                     {notesPanel}
@@ -393,7 +537,12 @@ export default function Page() {
             ) : null}
           </>
         ) : (
-          <AuthLayout onSignIn={signIn} onSignUp={signUp} isAuthWorking={isAuthWorking} />
+          <AuthLayout
+            onSignIn={signIn}
+            onSignUp={signUp}
+            // onSignInWithGoogle={signInWithGoogle}
+            isAuthWorking={isAuthWorking}
+          />
         )}
 
         <ToastStack
@@ -552,6 +701,19 @@ const MobileFolderLabel = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+`;
+
+const MobileFolderCount = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  border-radius: 999px;
+  border: 1px solid rgba(42, 158, 244, 0.28);
+  background: rgba(42, 158, 244, 0.14);
+  min-width: 22px;
+  padding: 2px 6px;
+  text-align: center;
+  flex-shrink: 0;
 `;
 
 const MobileBottomNav = styled.nav`

@@ -1,5 +1,12 @@
 const packageJson = require('./package.json');
 const isProduction = process.env.NODE_ENV === 'production';
+const appVersion = '0.1.11';
+
+if (packageJson.version !== appVersion) {
+  throw new Error(
+    `Version mismatch: package.json (${packageJson.version}) must match next.config.js (${appVersion}).`
+  );
+}
 
 const scriptSourceValue = isProduction
   ? "'self' 'unsafe-inline'"
@@ -55,7 +62,7 @@ const nextConfig = {
     styledComponents: true
   },
   env: {
-    NEXT_PUBLIC_APP_VERSION: packageJson.version
+    NEXT_PUBLIC_APP_VERSION: appVersion
   },
   async headers() {
     return [

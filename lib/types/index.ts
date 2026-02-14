@@ -5,6 +5,7 @@ export type Folder = {
   color: string;
   sort_order: number;
   created_at: string;
+  messageCount: number;
 };
 
 export type Note = {

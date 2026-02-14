@@ -20,6 +20,7 @@ import {
 
 type NotesPanelProps = {
   activeFolderTitle: string | null;
+  activeFolderNoteCount: number;
   noteContent: string;
   onNoteContentChange: (value: string) => void;
   onCreateNote: () => void;
@@ -33,6 +34,13 @@ type NotesPanelProps = {
   onCloseNoteMenu: () => void;
   onDeleteNote: (noteId: string) => void;
   noteIdBeingDeleted: string | null;
+  editingNoteId: string | null;
+  editingNoteContent: string;
+  onEditingNoteContentChange: (value: string) => void;
+  onStartEditNote: (note: Note) => void;
+  onCancelEditNote: () => void;
+  onSaveEditNote: () => void;
+  isNoteUpdating: boolean;
   scrollAnchorRef: RefObject<HTMLDivElement>;
   onPreviewLoad: () => void;
   isFolderSelected: boolean;
@@ -41,6 +49,7 @@ type NotesPanelProps = {
 
 export default function NotesPanel({
   activeFolderTitle,
+  activeFolderNoteCount,
   noteContent,
   onNoteContentChange,
   onCreateNote,
@@ -54,6 +63,13 @@ export default function NotesPanel({
   onCloseNoteMenu,
   onDeleteNote,
   noteIdBeingDeleted,
+  editingNoteId,
+  editingNoteContent,
+  onEditingNoteContentChange,
+  onStartEditNote,
+  onCancelEditNote,
+  onSaveEditNote,
+  isNoteUpdating,
   scrollAnchorRef,
   onPreviewLoad,
   isFolderSelected,
@@ -61,6 +77,8 @@ export default function NotesPanel({
 }: NotesPanelProps) {
   const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
   const isNoteSavingRef = useRef(false);
+  const activeFolderNotesLabel =
+    activeFolderNoteCount === 1 ? '1 note' : `${activeFolderNoteCount} notes`;
 
   const viewOptions = useMemo(
     () => [
@@ -98,13 +116,41 @@ export default function NotesPanel({
     onCreateNote();
   };
 
+  const renderNoteItem = (note: Note) => {
+    const isEditing = editingNoteId === note.id;
+
+    return (
+      <NoteItem
+        key={note.id}
+        note={note}
+        onPreviewLoad={onPreviewLoad}
+        isMenuOpen={openNoteMenuId === note.id}
+        isDeleting={noteIdBeingDeleted === note.id}
+        isEditing={isEditing}
+        editingContent={editingNoteContent}
+        isUpdating={isEditing && isNoteUpdating}
+        onEditingContentChange={onEditingNoteContentChange}
+        onToggleMenu={() => onToggleNoteMenu(note.id)}
+        onCloseMenu={onCloseNoteMenu}
+        onStartEdit={() => onStartEditNote(note)}
+        onCancelEdit={onCancelEditNote}
+        onSaveEdit={onSaveEditNote}
+        onDelete={() => onDeleteNote(note.id)}
+      />
+    );
+  };
+
   return (
     <PanelShell>
       {!isMobileLayout ? (
         <PanelHeader>
           <PanelTitle>Notes</PanelTitle>
           <PanelActions>
-            <PanelMeta>{activeFolderTitle ? `In ${activeFolderTitle}` : 'Select a folder'}</PanelMeta>
+            <PanelMeta>
+              {activeFolderTitle
+                ? `In ${activeFolderTitle} | ${activeFolderNotesLabel}`
+                : 'Select a folder'}
+            </PanelMeta>
             <ViewToggle role="group" aria-label="Notes view">
               {viewOptions.map((option) => (
                 <ViewButton
@@ -146,33 +192,11 @@ export default function NotesPanel({
           <EmptyState>No notes yet. Add the first one.</EmptyState>
         ) : notesView === NOTES_VIEW.list ? (
           <NotesList>
-            {notes.map((note) => (
-              <NoteItem
-                key={note.id}
-                note={note}
-                onPreviewLoad={onPreviewLoad}
-                isMenuOpen={openNoteMenuId === note.id}
-                isDeleting={noteIdBeingDeleted === note.id}
-                onToggleMenu={() => onToggleNoteMenu(note.id)}
-                onCloseMenu={onCloseNoteMenu}
-                onDelete={() => onDeleteNote(note.id)}
-              />
-            ))}
+            {notes.map(renderNoteItem)}
           </NotesList>
         ) : (
           <NotesGrid>
-            {notes.map((note) => (
-              <NoteItem
-                key={note.id}
-                note={note}
-                onPreviewLoad={onPreviewLoad}
-                isMenuOpen={openNoteMenuId === note.id}
-                isDeleting={noteIdBeingDeleted === note.id}
-                onToggleMenu={() => onToggleNoteMenu(note.id)}
-                onCloseMenu={onCloseNoteMenu}
-                onDelete={() => onDeleteNote(note.id)}
-              />
-            ))}
+            {notes.map(renderNoteItem)}
           </NotesGrid>
         )}
         <ScrollAnchor ref={scrollAnchorRef} />

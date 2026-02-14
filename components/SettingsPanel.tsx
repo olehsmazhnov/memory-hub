@@ -1,6 +1,6 @@
 'use client';
 
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import styled from 'styled-components';
 import { MIN_PASSWORD_LENGTH } from '../lib/constants/ui';
 import { PrimaryButton, SecondaryButton, TextInput } from './ui';
@@ -35,6 +35,8 @@ export default function SettingsPanel({
   isAuthWorking
 }: SettingsPanelProps) {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown';
+  const [isEmailMasked, setIsEmailMasked] = useState(true);
+
   const handleSaveSettingsSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSaveSettings();
@@ -45,13 +47,25 @@ export default function SettingsPanel({
       <SettingsForm onSubmit={handleSaveSettingsSubmit}>
         <FieldGroup>
           <FieldLabel htmlFor="settings-email">Email</FieldLabel>
-          <TextInput
-            id="settings-email"
-            type="email"
-            value={settingsEmail}
-            onChange={(event) => onEmailChange(event.target.value)}
-            disabled={isSettingsSaving}
-          />
+          <EmailFieldRow>
+            <EmailMaskInput
+              id="settings-email"
+              type="email"
+              value={settingsEmail}
+              onChange={(event) => onEmailChange(event.target.value)}
+              $isEmailMasked={isEmailMasked}
+              readOnly={isEmailMasked}
+              disabled={isSettingsSaving}
+              autoComplete={isEmailMasked ? 'off' : 'email'}
+            />
+            <EmailMaskToggleButton
+              type="button"
+              onClick={() => setIsEmailMasked((isCurrentEmailMasked) => !isCurrentEmailMasked)}
+              disabled={isSettingsSaving}
+            >
+              {isEmailMasked ? 'Show' : 'Hide'}
+            </EmailMaskToggleButton>
+          </EmailFieldRow>
         </FieldGroup>
         <FieldGroup>
           <FieldLabel htmlFor="settings-username">Username</FieldLabel>
@@ -133,6 +147,38 @@ const FieldGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+`;
+
+const EmailFieldRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const EmailMaskInput = styled(TextInput)<{ $isEmailMasked: boolean }>`
+  filter: ${({ $isEmailMasked }) => ($isEmailMasked ? 'blur(4px)' : 'none')};
+  transition: filter 0.16s ease;
+  user-select: ${({ $isEmailMasked }) => ($isEmailMasked ? 'none' : 'text')};
+`;
+
+const EmailMaskToggleButton = styled.button`
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:enabled {
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const FieldLabel = styled.label`

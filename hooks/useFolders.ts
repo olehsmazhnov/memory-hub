@@ -12,6 +12,24 @@ type UseFoldersOptions = {
   clearMessages: () => void;
 };
 
+type FolderCountRow = {
+  count: number | null;
+};
+
+type FolderSelectRow = Omit<Folder, 'messageCount'> & {
+  notes?: FolderCountRow[] | null;
+};
+
+const getFolderMessageCount = (countRows: FolderCountRow[] | null | undefined) => {
+  const messageCount = countRows?.[0]?.count;
+
+  if (typeof messageCount !== 'number' || !Number.isFinite(messageCount)) {
+    return 0;
+  }
+
+  return Math.max(0, messageCount);
+};
+
 export default function useFolders({ session, onError, onInfo, clearMessages }: UseFoldersOptions) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -39,7 +57,7 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
       setIsFoldersLoading(true);
       const { data, error } = await supabase
         .from('folders')
-        .select('*')
+        .select('id, user_id, title, color, sort_order, created_at, notes(count)')
         .eq('user_id', userId)
         .order('sort_order', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
@@ -50,13 +68,17 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
         return;
       }
 
-      const nextFolders = data ?? [];
-      setFolders(
-        nextFolders.map((folder) => ({
-          ...folder,
-          color: folder.color || FOLDER_COLOR_DEFAULT
-        }))
-      );
+      const nextFolders = ((data as FolderSelectRow[] | null) ?? []).map((folder) => ({
+        id: folder.id,
+        user_id: folder.user_id,
+        title: folder.title,
+        color: folder.color || FOLDER_COLOR_DEFAULT,
+        sort_order: folder.sort_order,
+        created_at: folder.created_at,
+        messageCount: getFolderMessageCount(folder.notes)
+      }));
+
+      setFolders(nextFolders);
       setActiveFolderId((currentId) => {
         if (currentId && nextFolders.some((folder) => folder.id === currentId)) {
           return currentId;
@@ -125,7 +147,17 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
     setIsFolderSaving(false);
 
     if (data) {
-      setFolders((current) => [data, ...current]);
+      const nextFolder: Folder = {
+        id: data.id,
+        user_id: data.user_id,
+        title: data.title,
+        color: data.color || FOLDER_COLOR_DEFAULT,
+        sort_order: data.sort_order,
+        created_at: data.created_at,
+        messageCount: 0
+      };
+
+      setFolders((current) => [nextFolder, ...current]);
       setActiveFolderId(data.id);
       return;
     }
@@ -379,6 +411,33 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
     onInfo('Folder deleted.');
   };
 
+  const handleFolderMessageCountChange = (folderId: string, messageCountDelta: number) => {
+    if (!Number.isFinite(messageCountDelta) || messageCountDelta === 0) {
+      return;
+    }
+
+    setFolders((currentFolders) =>
+      currentFolders.map((folder) => {
+        if (folder.id !== folderId) {
+          return folder;
+        }
+
+        return {
+          ...folder,
+          messageCount: Math.max(0, folder.messageCount + messageCountDelta)
+        };
+      })
+    );
+  };
+
+  const handleRefreshFolders = async () => {
+    if (!session?.user.id) {
+      return;
+    }
+
+    await loadFolders(session.user.id);
+  };
+
   return {
     folders,
     activeFolderId,
@@ -413,6 +472,8 @@ export default function useFolders({ session, onError, onInfo, clearMessages }: 
     handleCancelFolderRename,
     handleSaveFolderRename,
     handleFolderColorChange,
-    handleDeleteFolder
+    handleDeleteFolder,
+    handleFolderMessageCountChange,
+    handleRefreshFolders
   };
 }

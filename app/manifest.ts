@@ -9,6 +9,7 @@ import {
   PWA_ICON_512_SIZE,
   PWA_ICON_512_SRC,
   PWA_ICON_TYPE,
+  PWA_ORIENTATION,
   PWA_SCOPE,
   PWA_SHORT_NAME,
   PWA_START_URL,
@@ -40,6 +41,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: PWA_START_URL,
     scope: PWA_SCOPE,
     display: PWA_DISPLAY_MODE,
+    orientation: PWA_ORIENTATION,
     background_color: PWA_BACKGROUND_COLOR,
     theme_color: PWA_THEME_COLOR,
     icons: [

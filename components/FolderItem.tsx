@@ -75,6 +75,8 @@ export default function FolderItem({
   const isCollapsedMenuVisible = !isSidebarCollapsed && !isEditing;
   const isTouchReorderEnabled =
     !isSidebarCollapsed && !isEditing && !isFolderReordering && !isFolderBusy;
+  const folderMessageLabel =
+    folder.messageCount === 1 ? '1 message' : `${folder.messageCount} messages`;
 
   return (
     <FolderItemShell
@@ -185,9 +187,12 @@ export default function FolderItem({
           <FolderTitleRow>
             <FolderColorDot $color={folder.color} />
             <FolderTitle>{folder.title}</FolderTitle>
+            <FolderMessageCount>{folder.messageCount}</FolderMessageCount>
           </FolderTitleRow>
         )}
-        {!isSidebarCollapsed ? <FolderMeta>{formatDateTime(folder.created_at)}</FolderMeta> : null}
+        {!isSidebarCollapsed ? (
+          <FolderMeta>{`${folderMessageLabel} | ${formatDateTime(folder.created_at)}`}</FolderMeta>
+        ) : null}
       </FolderContent>
       {isCollapsedMenuVisible ? (
         <FolderMenu
@@ -371,6 +376,7 @@ const FolderTitleRow = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 `;
 
 const FolderColorDot = styled.span<{ $color: string }>`
@@ -384,6 +390,23 @@ const FolderColorDot = styled.span<{ $color: string }>`
 const FolderTitle = styled.span`
   font-weight: 600;
   font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const FolderMessageCount = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  border-radius: 999px;
+  border: 1px solid rgba(42, 158, 244, 0.32);
+  background: rgba(42, 158, 244, 0.14);
+  min-width: 22px;
+  padding: 2px 6px;
+  text-align: center;
 `;
 
 const FolderMeta = styled.span`

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DragEvent, KeyboardEvent } from 'react';
+import type { DragEvent, KeyboardEvent, TouchEvent } from 'react';
 import { FOLDER_COLOR_OPTIONS } from '../lib/constants/folders';
 import type { Folder } from '../lib/types';
 import { BRAND_SUBTITLE, BRAND_TITLE } from '../lib/constants/branding';
@@ -57,12 +57,17 @@ type SidebarProps = {
   onFolderTouchEnd: () => void;
   onDeleteFolder: (folderId: string) => Promise<void> | void;
   onChangeFolderColor: (folderId: string, color: string) => void;
+  onRefreshFolders: () => Promise<void> | void;
   isSettingsActive: boolean;
   onToggleSettings: () => void;
   isSidebarCollapsed: boolean;
   onToggleSidebarCollapse: () => void;
   isMobileLayout?: boolean;
 };
+
+const PULL_REFRESH_START_DISTANCE_PX = 12;
+const PULL_REFRESH_TRIGGER_DISTANCE_PX = 58;
+const PULL_REFRESH_MAX_DISTANCE_PX = 120;
 
 export default function Sidebar({
   folders,
@@ -100,6 +105,7 @@ export default function Sidebar({
   onFolderTouchEnd,
   onDeleteFolder,
   onChangeFolderColor,
+  onRefreshFolders,
   isSettingsActive,
   onToggleSettings,
   isSidebarCollapsed,
@@ -108,7 +114,11 @@ export default function Sidebar({
 }: SidebarProps) {
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [folderIdPendingDelete, setFolderIdPendingDelete] = useState<string | null>(null);
+  const [pullDistancePx, setPullDistancePx] = useState(0);
+  const [isPullRefreshReady, setIsPullRefreshReady] = useState(false);
   const isFolderSavingRef = useRef(false);
+  const pullStartYRef = useRef<number | null>(null);
+  const isPullRefreshActiveRef = useRef(false);
   const isDesktopCollapsed = !isMobileLayout && isSidebarCollapsed;
   const pendingDeleteFolder = folderIdPendingDelete
     ? folders.find((folder) => folder.id === folderIdPendingDelete) ?? null
@@ -148,6 +158,15 @@ export default function Sidebar({
       window.removeEventListener('keydown', handleWindowKeyDown);
     };
   }, [folderIdPendingDelete, isDeleteInProgress]);
+
+  useEffect(() => {
+    if (!isMobileLayout) {
+      pullStartYRef.current = null;
+      isPullRefreshActiveRef.current = false;
+      setPullDistancePx(0);
+      setIsPullRefreshReady(false);
+    }
+  }, [isMobileLayout]);
 
   const handleToggleCreateForm = () => {
     if (isDesktopCollapsed) {
@@ -197,6 +216,73 @@ export default function Sidebar({
     );
   };
 
+  const resetPullRefresh = () => {
+    pullStartYRef.current = null;
+    isPullRefreshActiveRef.current = false;
+    setPullDistancePx(0);
+    setIsPullRefreshReady(false);
+  };
+
+  const handleSidebarTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!isMobileLayout || isFoldersLoading || isFolderReordering || event.touches.length !== 1) {
+      return;
+    }
+
+    if (event.currentTarget.scrollTop > 0) {
+      return;
+    }
+
+    pullStartYRef.current = event.touches[0].clientY;
+    isPullRefreshActiveRef.current = true;
+    setPullDistancePx(0);
+    setIsPullRefreshReady(false);
+  };
+
+  const handleSidebarTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (!isPullRefreshActiveRef.current || pullStartYRef.current === null) {
+      return;
+    }
+
+    if (event.currentTarget.scrollTop > 0 || draggingFolderId) {
+      resetPullRefresh();
+      return;
+    }
+
+    const touchPoint = event.touches[0];
+    if (!touchPoint) {
+      return;
+    }
+
+    const pullDistanceRawPx = touchPoint.clientY - pullStartYRef.current;
+    if (pullDistanceRawPx <= PULL_REFRESH_START_DISTANCE_PX) {
+      setPullDistancePx(0);
+      setIsPullRefreshReady(false);
+      return;
+    }
+
+    const pullDistanceAdjustedPx = pullDistanceRawPx - PULL_REFRESH_START_DISTANCE_PX;
+    const pullDistanceLimitedPx = Math.min(PULL_REFRESH_MAX_DISTANCE_PX, pullDistanceAdjustedPx);
+    setPullDistancePx(pullDistanceLimitedPx);
+    setIsPullRefreshReady(pullDistanceLimitedPx >= PULL_REFRESH_TRIGGER_DISTANCE_PX);
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+  };
+
+  const handleSidebarTouchEnd = () => {
+    if (!isPullRefreshActiveRef.current) {
+      return;
+    }
+
+    const isRefreshTriggered = isPullRefreshReady && !isFoldersLoading;
+    resetPullRefresh();
+
+    if (isRefreshTriggered) {
+      void onRefreshFolders();
+    }
+  };
+
   return (
     <SidebarShell>
       {!isMobileLayout ? (
@@ -238,7 +324,22 @@ export default function Sidebar({
         </SidebarHeader>
       ) : null}
 
-      <SidebarBody $isMobileLayout={isMobileLayout} $isCreateFormOpen={isCreateFormOpen}>
+      <SidebarBody
+        $isMobileLayout={isMobileLayout}
+        $isCreateFormOpen={isCreateFormOpen}
+        onTouchStart={handleSidebarTouchStart}
+        onTouchMove={handleSidebarTouchMove}
+        onTouchEnd={handleSidebarTouchEnd}
+        onTouchCancel={resetPullRefresh}
+      >
+        <PullRefreshHint
+          aria-hidden={!isMobileLayout || pullDistancePx === 0}
+          $isVisible={isMobileLayout && pullDistancePx > 0}
+          $isReady={isPullRefreshReady}
+          $pullDistancePx={pullDistancePx}
+        >
+          {isPullRefreshReady ? 'Release to update folders' : 'Pull down to update folders'}
+        </PullRefreshHint>
         {!isDesktopCollapsed ? (
           <PanelHeader>
             <PanelTitle>Folders</PanelTitle>
@@ -478,7 +579,49 @@ const SidebarBody = styled.div<{ $isMobileLayout: boolean; $isCreateFormOpen: bo
   @media (max-width: 720px) {
     padding-right: 0;
     margin-right: 0;
+    overscroll-behavior-y: contain;
   }
+`;
+
+const PullRefreshHint = styled.div<{
+  $isVisible: boolean;
+  $isReady: boolean;
+  $pullDistancePx: number;
+}>`
+  align-self: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ $isReady }) => ($isReady ? 'var(--accent-dark)' : 'var(--muted)')};
+  border-radius: 999px;
+  border: 1px solid
+    ${({ $isVisible, $isReady }) => {
+      if (!$isVisible) {
+        return 'transparent';
+      }
+
+      return $isReady ? 'rgba(42, 158, 244, 0.45)' : 'rgba(107, 122, 140, 0.25)';
+    }};
+  background: ${({ $isVisible, $isReady }) => {
+    if (!$isVisible) {
+      return 'transparent';
+    }
+
+    return $isReady ? 'rgba(42, 158, 244, 0.12)' : 'rgba(255, 255, 255, 0.92)';
+  }};
+  padding: ${({ $isVisible }) => ($isVisible ? '4px 10px' : '0 10px')};
+  max-height: ${({ $isVisible }) => ($isVisible ? '32px' : '0')};
+  opacity: ${({ $isVisible }) => ($isVisible ? 1 : 0)};
+  transform: translateY(
+    ${({ $isVisible, $pullDistancePx }) => {
+      if (!$isVisible) {
+        return '0';
+      }
+
+      return `${Math.min(20, Math.round($pullDistancePx * 0.35))}px`;
+    }}
+  );
+  transition: opacity 0.12s ease, transform 0.12s ease, max-height 0.12s ease, padding 0.12s ease;
+  pointer-events: none;
 `;
 
 const FolderList = styled.div<{ $isSidebarCollapsed: boolean }>`

@@ -9,6 +9,7 @@ type UseNotesOptions = {
   onError: (message: string) => void;
   onInfo: (message: string) => void;
   clearMessages: () => void;
+  onFolderMessageCountChange?: (folderId: string, messageCountDelta: number) => void;
 };
 
 export default function useNotes({
@@ -16,14 +17,18 @@ export default function useNotes({
   activeFolderId,
   onError,
   onInfo,
-  clearMessages
+  clearMessages,
+  onFolderMessageCountChange
 }: UseNotesOptions) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteContent, setNoteContent] = useState('');
   const [isNotesLoading, setIsNotesLoading] = useState(false);
   const [isNoteSaving, setIsNoteSaving] = useState(false);
+  const [isNoteUpdating, setIsNoteUpdating] = useState(false);
   const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null);
   const [noteIdBeingDeleted, setNoteIdBeingDeleted] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState('');
 
   const sortedNotes = useMemo(
     () =>
@@ -65,9 +70,16 @@ export default function useNotes({
     if (!session?.user.id || !activeFolderId) {
       setNotes([]);
       setOpenNoteMenuId(null);
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+      setIsNoteUpdating(false);
       return;
     }
 
+    setOpenNoteMenuId(null);
+    setEditingNoteId(null);
+    setEditingNoteContent('');
+    setIsNoteUpdating(false);
     loadNotes(session.user.id, activeFolderId);
   }, [activeFolderId, loadNotes, session?.user.id]);
 
@@ -77,6 +89,9 @@ export default function useNotes({
       setNoteContent('');
       setOpenNoteMenuId(null);
       setNoteIdBeingDeleted(null);
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+      setIsNoteUpdating(false);
     }
   }, [session]);
 
@@ -118,6 +133,7 @@ export default function useNotes({
     setNoteContent('');
     onInfo('Note added.');
     setIsNoteSaving(false);
+    onFolderMessageCountChange?.(activeFolderId, 1);
 
     if (data) {
       setNotes((current) => [...current, data]);
@@ -135,6 +151,9 @@ export default function useNotes({
       return;
     }
 
+    const noteToDelete = notes.find((note) => note.id === noteId);
+    const folderIdForDeletedNote = noteToDelete?.folder_id ?? activeFolderId;
+
     setNoteIdBeingDeleted(noteId);
     const { error } = await supabase
       .from('notes')
@@ -151,7 +170,80 @@ export default function useNotes({
     setNotes((current) => current.filter((note) => note.id !== noteId));
     setOpenNoteMenuId(null);
     setNoteIdBeingDeleted(null);
+    if (editingNoteId === noteId) {
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+      setIsNoteUpdating(false);
+    }
+    if (folderIdForDeletedNote) {
+      onFolderMessageCountChange?.(folderIdForDeletedNote, -1);
+    }
     onInfo('Note deleted.');
+  };
+
+  const handleStartNoteEdit = (note: Note) => {
+    setEditingNoteId(note.id);
+    setEditingNoteContent(note.content);
+    setOpenNoteMenuId(null);
+  };
+
+  const handleCancelNoteEdit = () => {
+    if (isNoteUpdating) {
+      return;
+    }
+
+    setEditingNoteId(null);
+    setEditingNoteContent('');
+  };
+
+  const handleSaveNoteEdit = async () => {
+    clearMessages();
+
+    if (!session?.user.id || !editingNoteId) {
+      onError('You must be signed in.');
+      return;
+    }
+
+    const trimmedContent = editingNoteContent.trim();
+
+    if (!trimmedContent) {
+      onError('Note content is required.');
+      return;
+    }
+
+    const currentNote = notes.find((note) => note.id === editingNoteId);
+    if (currentNote && currentNote.content === trimmedContent) {
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+      return;
+    }
+
+    setIsNoteUpdating(true);
+    const { data, error } = await supabase
+      .from('notes')
+      .update({ content: trimmedContent })
+      .eq('id', editingNoteId)
+      .eq('user_id', session.user.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      onError(error.message);
+      setIsNoteUpdating(false);
+      return;
+    }
+
+    if (data) {
+      setNotes((currentNotes) =>
+        currentNotes.map((note) => (note.id === data.id ? { ...note, content: data.content } : note))
+      );
+    }
+
+    setIsNoteUpdating(false);
+    setEditingNoteId(null);
+    setEditingNoteContent('');
+    setOpenNoteMenuId(null);
+    onInfo('Note updated.');
   };
 
   return {
@@ -161,10 +253,17 @@ export default function useNotes({
     setNoteContent,
     isNotesLoading,
     isNoteSaving,
+    isNoteUpdating,
     openNoteMenuId,
     setOpenNoteMenuId,
     noteIdBeingDeleted,
+    editingNoteId,
+    editingNoteContent,
+    setEditingNoteContent,
     handleCreateNote,
-    handleDeleteNote
+    handleDeleteNote,
+    handleStartNoteEdit,
+    handleCancelNoteEdit,
+    handleSaveNoteEdit
   };
 }

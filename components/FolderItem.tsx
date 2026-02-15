@@ -81,6 +81,7 @@ export default function FolderItem({
   return (
     <FolderItemShell
       data-folder-id={folder.id}
+      data-disable-nav-swipe="true"
       $isActive={isActive}
       $isDragging={isDragging}
       $isDragOver={isDragOver}
@@ -94,6 +95,8 @@ export default function FolderItem({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       onTouchStart={(event) => {
+        event.stopPropagation();
+
         if (!isTouchReorderEnabled || event.touches.length !== 1) {
           return;
         }
@@ -101,21 +104,31 @@ export default function FolderItem({
         onTouchReorderStart(folder.id);
       }}
       onTouchMove={(event) => {
+        event.stopPropagation();
+
         if (!isTouchReorderEnabled || event.touches.length !== 1) {
           return;
+        }
+
+        if (event.cancelable) {
+          event.preventDefault();
         }
 
         const activeTouch = event.touches[0];
         onTouchReorderMove(activeTouch.clientX, activeTouch.clientY);
       }}
-      onTouchEnd={() => {
+      onTouchEnd={(event) => {
+        event.stopPropagation();
+
         if (!isTouchReorderEnabled) {
           return;
         }
 
         onTouchReorderEnd();
       }}
-      onTouchCancel={() => {
+      onTouchCancel={(event) => {
+        event.stopPropagation();
+
         if (!isTouchReorderEnabled) {
           return;
         }

@@ -370,7 +370,12 @@ const NoteMenuList = styled.div`
   flex-direction: column;
   gap: 4px;
   min-width: 140px;
-  z-index: 2;
+  z-index: 20;
+
+  @media (max-width: 720px) {
+    top: auto;
+    bottom: 28px;
+  }
 `;
 
 const NoteMenuItem = styled.button`

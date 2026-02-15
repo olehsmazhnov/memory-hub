@@ -284,13 +284,15 @@ const NoteSwipeShell = styled.article.attrs({
 })`
   position: relative;
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
   touch-action: pan-y;
+  z-index: 1;
 `;
 
 const SwipeBackground = styled.div<{ $direction: SwipeDirection; $progress: number }>`
   position: absolute;
   inset: 0;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: ${({ $direction }) => ($direction === 'right' ? 'flex-start' : 'flex-end')};

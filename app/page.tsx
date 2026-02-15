@@ -471,6 +471,14 @@ export default function Page() {
     <>
       <GlobalStyle />
       <PageShell>
+        <LandscapeLockOverlay>
+          <LandscapeLockCard>
+            <LandscapeLockTitle>Portrait mode only</LandscapeLockTitle>
+            <LandscapeLockText>Please rotate your device back to vertical orientation.</LandscapeLockText>
+          </LandscapeLockCard>
+        </LandscapeLockOverlay>
+
+        <AppContent>
         {isSessionLoading ? (
           <CenteredScreen>
             <StatusCard title="Loading session" message="Checking your auth status..." />
@@ -559,6 +567,7 @@ export default function Page() {
           onDismissError={() => setErrorMessage(null)}
           onDismissInfo={() => setInfoMessage(null)}
         />
+        </AppContent>
       </PageShell>
     </>
   );
@@ -615,6 +624,53 @@ const PageShell = styled.main`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+`;
+
+const AppContent = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  @media (max-width: ${MOBILE_BREAKPOINT_PX}px) and (orientation: landscape) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+`;
+
+const LandscapeLockOverlay = styled.div`
+  display: none;
+
+  @media (max-width: ${MOBILE_BREAKPOINT_PX}px) and (orientation: landscape) {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at top, var(--bg-top), var(--bg-bottom));
+    padding: 20px;
+  }
+`;
+
+const LandscapeLockCard = styled.div`
+  width: min(420px, 100%);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  text-align: center;
+`;
+
+const LandscapeLockTitle = styled.h3`
+  margin: 0;
+  font-size: 20px;
+`;
+
+const LandscapeLockText = styled.p`
+  margin: 10px 0 0;
+  color: var(--muted);
 `;
 
 const MainGrid = styled.section<{ $isSidebarCollapsed: boolean }>`

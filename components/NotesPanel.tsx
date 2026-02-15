@@ -76,7 +76,9 @@ export default function NotesPanel({
   isMobileLayout = false
 }: NotesPanelProps) {
   const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
+  const [isPastingFromClipboard, setIsPastingFromClipboard] = useState(false);
   const isNoteSavingRef = useRef(false);
+  const noteInputRef = useRef<HTMLTextAreaElement | null>(null);
   const activeFolderNotesLabel =
     activeFolderNoteCount === 1 ? '1 note' : `${activeFolderNoteCount} notes`;
 
@@ -114,6 +116,31 @@ export default function NotesPanel({
     }
 
     onCreateNote();
+  };
+
+  const handlePasteFromClipboard = async () => {
+    if (!isFolderSelected || !navigator.clipboard?.readText) {
+      return;
+    }
+
+    setIsPastingFromClipboard(true);
+
+    try {
+      const clipboardText = (await navigator.clipboard.readText()).trim();
+
+      if (!clipboardText) {
+        return;
+      }
+
+      onNoteContentChange((noteContent ? `${noteContent}\n` : '') + clipboardText);
+      requestAnimationFrame(() => {
+        noteInputRef.current?.focus();
+      });
+    } catch {
+      // Clipboard access can fail on mobile depending on browser permission policy.
+    } finally {
+      setIsPastingFromClipboard(false);
+    }
   };
 
   const renderNoteItem = (note: Note) => {
@@ -171,15 +198,25 @@ export default function NotesPanel({
       {!isMobileLayout ? (
         <NoteComposer>
           <TextArea
+            ref={noteInputRef}
             placeholder={activeFolderTitle ? 'Write a note...' : 'Pick a folder to start writing'}
             value={noteContent}
             onChange={(event) => onNoteContentChange(event.target.value)}
             onKeyDown={handleNoteInputKeyDown}
             disabled={!isFolderSelected}
           />
-          <NoteSendButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
-            Add note
-          </NoteSendButton>
+          <ComposerActions>
+            <PasteButton
+              type="button"
+              onClick={handlePasteFromClipboard}
+              disabled={!isFolderSelected || isPastingFromClipboard}
+            >
+              {isPastingFromClipboard ? 'Pasting...' : 'Paste from clipboard'}
+            </PasteButton>
+            <NoteSendButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
+              Add note
+            </NoteSendButton>
+          </ComposerActions>
         </NoteComposer>
       ) : null}
 
@@ -207,12 +244,20 @@ export default function NotesPanel({
           {isMobileComposerOpen ? (
             <MobileComposerCard>
               <TextArea
+                ref={noteInputRef}
                 placeholder={activeFolderTitle ? 'Write a note...' : 'Pick a folder to start writing'}
                 value={noteContent}
                 onChange={(event) => onNoteContentChange(event.target.value)}
                 onKeyDown={handleNoteInputKeyDown}
                 disabled={!isFolderSelected}
               />
+              <PasteButton
+                type="button"
+                onClick={handlePasteFromClipboard}
+                disabled={!isFolderSelected || isPastingFromClipboard}
+              >
+                {isPastingFromClipboard ? 'Pasting...' : 'Paste from clipboard'}
+              </PasteButton>
               <PrimaryButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
                 Add note
               </PrimaryButton>
@@ -244,7 +289,13 @@ const NoteComposer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: relative;
+`;
+
+const ComposerActions = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 `;
 
 const ContentScrollArea = styled.div<{ $isMobileLayout: boolean; $isMobileComposerOpen: boolean }>`
@@ -287,16 +338,27 @@ const NotesGrid = styled.div`
 `;
 
 const NoteSendButton = styled(PrimaryButton)`
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
   padding: 8px 14px;
 
   @media (max-width: 720px) {
-    right: 10px;
-    bottom: 10px;
     padding: 6px 10px;
     font-size: 12px;
+  }
+`;
+
+const PasteButton = styled.button`
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 

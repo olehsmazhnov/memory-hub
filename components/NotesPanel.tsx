@@ -104,6 +104,16 @@ export default function NotesPanel({
   }, [isMobileLayout]);
 
   useEffect(() => {
+    if (!isMobileLayout || !isMobileComposerOpen) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      noteInputRef.current?.focus();
+    });
+  }, [isMobileLayout, isMobileComposerOpen]);
+
+  useEffect(() => {
     if (isNoteSavingRef.current && !isNoteSaving && !noteContent.trim()) {
       setIsMobileComposerOpen(false);
     }

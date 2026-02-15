@@ -96,6 +96,9 @@ export default function Page() {
     noteContent,
     setNoteContent,
     isNotesLoading,
+    isLoadingMoreNotes,
+    hasMoreNotes,
+    loadMoreNotes,
     isNoteSaving,
     isNoteUpdating,
     openNoteMenuId,
@@ -141,9 +144,11 @@ export default function Page() {
     [folders, activeFolderId]
   );
 
+  const latestNoteId = sortedNotes.length ? sortedNotes[sortedNotes.length - 1].id : null;
+
   const { anchorRef: notesAnchorRef, scrollToBottom } = useScrollToBottom({
     isEnabled: activeTab === CONTENT_TABS.notes,
-    dependencies: [activeFolderId, notesView, sortedNotes.length]
+    dependencies: [activeFolderId, notesView, latestNoteId]
   });
 
   useEffect(() => {
@@ -368,6 +373,9 @@ export default function Page() {
       onCreateNote={handleCreateNote}
       isNoteSaving={isNoteSaving}
       isNotesLoading={isNotesLoading}
+      isLoadingMoreNotes={isLoadingMoreNotes}
+      hasMoreNotes={hasMoreNotes}
+      onLoadMoreNotes={loadMoreNotes}
       notes={sortedNotes}
       notesView={notesView}
       onNotesViewChange={setNotesView}

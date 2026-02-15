@@ -12,6 +12,8 @@ type UseNotesOptions = {
   onFolderMessageCountChange?: (folderId: string, messageCountDelta: number) => void;
 };
 
+const NOTES_PAGE_SIZE = 30;
+
 export default function useNotes({
   session,
   activeFolderId,
@@ -23,6 +25,8 @@ export default function useNotes({
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteContent, setNoteContent] = useState('');
   const [isNotesLoading, setIsNotesLoading] = useState(false);
+  const [isLoadingMoreNotes, setIsLoadingMoreNotes] = useState(false);
+  const [hasMoreNotes, setHasMoreNotes] = useState(false);
   const [isNoteSaving, setIsNoteSaving] = useState(false);
   const [isNoteUpdating, setIsNoteUpdating] = useState(false);
   const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null);
@@ -47,12 +51,14 @@ export default function useNotes({
       }
 
       setIsNotesLoading(true);
+      setIsLoadingMoreNotes(false);
       const { data, error } = await supabase
         .from('notes')
         .select('*')
         .eq('user_id', userId)
         .eq('folder_id', folderId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(NOTES_PAGE_SIZE);
 
       if (error) {
         onError(error.message);
@@ -60,15 +66,52 @@ export default function useNotes({
         return;
       }
 
-      setNotes(data ?? []);
+      const latestPage = data ?? [];
+      setNotes([...latestPage].reverse());
+      setHasMoreNotes(latestPage.length === NOTES_PAGE_SIZE);
       setIsNotesLoading(false);
     },
     [onError]
   );
 
+  const loadMoreNotes = useCallback(async () => {
+    if (!session?.user.id || !activeFolderId || isLoadingMoreNotes || isNotesLoading || !hasMoreNotes) {
+      return;
+    }
+
+    const oldestLoadedNote = sortedNotes[0];
+    if (!oldestLoadedNote) {
+      return;
+    }
+
+    setIsLoadingMoreNotes(true);
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('folder_id', activeFolderId)
+      .lt('created_at', oldestLoadedNote.created_at)
+      .order('created_at', { ascending: false })
+      .limit(NOTES_PAGE_SIZE);
+
+    if (error) {
+      onError(error.message);
+      setIsLoadingMoreNotes(false);
+      return;
+    }
+
+    const olderPage = data ?? [];
+    const olderNotesAsc = [...olderPage].reverse();
+    setNotes((currentNotes) => [...olderNotesAsc, ...currentNotes]);
+    setHasMoreNotes(olderPage.length === NOTES_PAGE_SIZE);
+    setIsLoadingMoreNotes(false);
+  }, [activeFolderId, hasMoreNotes, isLoadingMoreNotes, isNotesLoading, onError, session?.user.id, sortedNotes]);
+
   useEffect(() => {
     if (!session?.user.id || !activeFolderId) {
       setNotes([]);
+      setHasMoreNotes(false);
+      setIsLoadingMoreNotes(false);
       setOpenNoteMenuId(null);
       setEditingNoteId(null);
       setEditingNoteContent('');
@@ -86,6 +129,8 @@ export default function useNotes({
   useEffect(() => {
     if (!session) {
       setNotes([]);
+      setHasMoreNotes(false);
+      setIsLoadingMoreNotes(false);
       setNoteContent('');
       setOpenNoteMenuId(null);
       setNoteIdBeingDeleted(null);
@@ -252,6 +297,9 @@ export default function useNotes({
     noteContent,
     setNoteContent,
     isNotesLoading,
+    isLoadingMoreNotes,
+    hasMoreNotes,
+    loadMoreNotes,
     isNoteSaving,
     isNoteUpdating,
     openNoteMenuId,

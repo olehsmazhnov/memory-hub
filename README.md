@@ -18,7 +18,10 @@ Memory Hub is a Next.js + Supabase app for storing personal notes in folders, wi
   - Create note in selected folder
   - Show notes count in opened folder
   - Edit note
-  - Delete note
+  - Delete note (with confirmation modal)
+  - Non-blocking optimistic statuses: `Saving...` and `Deleting...`
+  - Pagination: load latest notes first and fetch older while scrolling to top
+  - Mobile swipe actions: right = edit, left = delete
   - Switch between list and bricks view
 - Link handling:
   - Clickable URL notes
@@ -30,6 +33,7 @@ Memory Hub is a Next.js + Supabase app for storing personal notes in folders, wi
   - Update password
 - PWA:
   - Installable on mobile
+  - Portrait orientation lock
   - Swipe left/right navigation between sections on mobile
   - Web Share Target endpoint for sharing links (for example from YouTube) into the app draft
 
@@ -132,6 +136,18 @@ lib/                  constants, utils, supabase client, types
 public/               static files (icons, service worker)
 supabase/migrations/  SQL migrations
 ```
+
+## Multi-client implementation guide
+
+If you want to build another client (for example React Native), see:
+
+- `CLIENT_IMPLEMENTATION_GUIDE.md`
+
+It documents:
+- architecture and module responsibilities
+- data model and Supabase query patterns
+- UX contracts (pagination, optimistic save/delete statuses, swipe behaviors)
+- portability plan for a native client
 
 ## Notes
 

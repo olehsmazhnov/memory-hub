@@ -83,6 +83,7 @@ export default function NotesPanel({
 }: NotesPanelProps) {
   const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
   const [isPastingFromClipboard, setIsPastingFromClipboard] = useState(false);
+  const [noteIdPendingDelete, setNoteIdPendingDelete] = useState<string | null>(null);
   const isNoteSavingRef = useRef(false);
   const noteInputRef = useRef<HTMLTextAreaElement | null>(null);
   const activeFolderNotesLabel =
@@ -109,6 +110,17 @@ export default function NotesPanel({
 
     isNoteSavingRef.current = isNoteSaving;
   }, [isNoteSaving, noteContent]);
+
+  useEffect(() => {
+    if (!noteIdPendingDelete || noteIdBeingDeleted) {
+      return;
+    }
+
+    const hasPendingNote = notes.some((note) => note.id === noteIdPendingDelete);
+    if (!hasPendingNote) {
+      setNoteIdPendingDelete(null);
+    }
+  }, [noteIdBeingDeleted, noteIdPendingDelete, notes]);
 
   const handleNoteInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || event.shiftKey) {
@@ -159,6 +171,26 @@ export default function NotesPanel({
     }
   };
 
+  const handleDeletePromptClose = () => {
+    if (noteIdBeingDeleted) {
+      return;
+    }
+
+    setNoteIdPendingDelete(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!noteIdPendingDelete || noteIdBeingDeleted) {
+      return;
+    }
+
+    onDeleteNote(noteIdPendingDelete);
+  };
+
+  const pendingDeleteNote = noteIdPendingDelete
+    ? notes.find((currentNote) => currentNote.id === noteIdPendingDelete) ?? null
+    : null;
+
   const renderNoteItem = (note: Note) => {
     const isEditing = editingNoteId === note.id;
 
@@ -178,7 +210,7 @@ export default function NotesPanel({
         onStartEdit={() => onStartEditNote(note)}
         onCancelEdit={onCancelEditNote}
         onSaveEdit={onSaveEditNote}
-        onDelete={() => onDeleteNote(note.id)}
+        onDelete={() => setNoteIdPendingDelete(note.id)}
       />
     );
   };
@@ -292,6 +324,27 @@ export default function NotesPanel({
             {isMobileComposerOpen ? 'x' : '+'}
           </MobileAddButton>
         </MobileComposerArea>
+      ) : null}
+
+      {noteIdPendingDelete ? (
+        <DeleteOverlay role="presentation" onClick={handleDeletePromptClose}>
+          <DeleteDialog role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <DeleteTitle>
+              {pendingDeleteNote
+                ? `Delete this note? “${pendingDeleteNote.content.slice(0, 60)}${pendingDeleteNote.content.length > 60 ? '...' : ''}”`
+                : 'Delete this note?'}
+            </DeleteTitle>
+            <DeleteDescription>This action is permanent and cannot be undone.</DeleteDescription>
+            <DeleteActions>
+              <DeleteActionButton type="button" onClick={handleDeletePromptClose} disabled={Boolean(noteIdBeingDeleted)}>
+                Cancel
+              </DeleteActionButton>
+              <DeleteActionButton type="button" $isDanger onClick={handleDeleteConfirm} disabled={Boolean(noteIdBeingDeleted)}>
+                {noteIdBeingDeleted ? 'Deleting...' : 'Delete'}
+              </DeleteActionButton>
+            </DeleteActions>
+          </DeleteDialog>
+        </DeleteOverlay>
       ) : null}
     </PanelShell>
   );
@@ -473,5 +526,65 @@ const MobileAddButton = styled.button`
   &:hover {
     background: var(--accent-dark);
     transform: translateY(-1px);
+  }
+`;
+
+const DeleteOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  background: rgba(6, 20, 36, 0.46);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+`;
+
+const DeleteDialog = styled.div`
+  width: min(420px, 100%);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 20px 46px rgba(15, 31, 50, 0.22);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const DeleteTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+`;
+
+const DeleteDescription = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+`;
+
+const DeleteActions = styled.div`
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const DeleteActionButton = styled.button<{ $isDanger?: boolean }>`
+  min-width: 108px;
+  border-radius: 12px;
+  border: 1px solid ${({ $isDanger }) => ($isDanger ? 'rgba(217, 84, 77, 0.35)' : 'var(--border)')};
+  background: ${({ $isDanger }) => ($isDanger ? 'var(--danger)' : '#fff')};
+  color: ${({ $isDanger }) => ($isDanger ? '#fff' : 'var(--text)')};
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 `;

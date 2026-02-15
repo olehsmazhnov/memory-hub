@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject, type UIEvent } from 'react';
 import styled from 'styled-components';
 import type { Note } from '../lib/types';
 import { NOTES_VIEW, type NotesView } from '../lib/constants/tabs';
@@ -26,6 +26,9 @@ type NotesPanelProps = {
   onCreateNote: () => void;
   isNoteSaving: boolean;
   isNotesLoading: boolean;
+  isLoadingMoreNotes: boolean;
+  hasMoreNotes: boolean;
+  onLoadMoreNotes: () => void;
   notes: Note[];
   notesView: NotesView;
   onNotesViewChange: (view: NotesView) => void;
@@ -55,6 +58,9 @@ export default function NotesPanel({
   onCreateNote,
   isNoteSaving,
   isNotesLoading,
+  isLoadingMoreNotes,
+  hasMoreNotes,
+  onLoadMoreNotes,
   notes,
   notesView,
   onNotesViewChange,
@@ -143,6 +149,16 @@ export default function NotesPanel({
     }
   };
 
+  const handleNotesScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!hasMoreNotes || isLoadingMoreNotes) {
+      return;
+    }
+
+    if (event.currentTarget.scrollTop <= 80) {
+      onLoadMoreNotes();
+    }
+  };
+
   const renderNoteItem = (note: Note) => {
     const isEditing = editingNoteId === note.id;
 
@@ -220,7 +236,12 @@ export default function NotesPanel({
         </NoteComposer>
       ) : null}
 
-      <ContentScrollArea $isMobileLayout={isMobileLayout} $isMobileComposerOpen={isMobileComposerOpen}>
+      <ContentScrollArea
+        $isMobileLayout={isMobileLayout}
+        $isMobileComposerOpen={isMobileComposerOpen}
+        onScroll={handleNotesScroll}
+      >
+        {isLoadingMoreNotes ? <MutedText>Loading older notes...</MutedText> : null}
         {isNotesLoading ? (
           <MutedText>Loading notes...</MutedText>
         ) : !isFolderSelected ? (

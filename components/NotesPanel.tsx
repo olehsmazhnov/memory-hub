@@ -132,18 +132,25 @@ export default function NotesPanel({
     }
   }, [noteIdBeingDeleted, noteIdPendingDelete, notes]);
 
+  const handleCreateNoteAction = () => {
+    if (isNoteSaving || !isFolderSelected) {
+      return;
+    }
+
+    onCreateNote();
+
+    if (isMobileLayout) {
+      setIsMobileComposerOpen(false);
+    }
+  };
+
   const handleNoteInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || event.shiftKey) {
       return;
     }
 
     event.preventDefault();
-
-    if (isNoteSaving || !isFolderSelected) {
-      return;
-    }
-
-    onCreateNote();
+    handleCreateNoteAction();
   };
 
   const handlePasteFromClipboard = async () => {
@@ -272,7 +279,7 @@ export default function NotesPanel({
             >
               {isPastingFromClipboard ? 'Pasting...' : 'Paste from clipboard'}
             </PasteButton>
-            <NoteSendButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
+            <NoteSendButton onClick={handleCreateNoteAction} disabled={isNoteSaving || !isFolderSelected}>
               Add note
             </NoteSendButton>
           </ComposerActions>
@@ -322,7 +329,7 @@ export default function NotesPanel({
               >
                 {isPastingFromClipboard ? 'Pasting...' : 'Paste from clipboard'}
               </PasteButton>
-              <PrimaryButton onClick={onCreateNote} disabled={isNoteSaving || !isFolderSelected}>
+              <PrimaryButton onClick={handleCreateNoteAction} disabled={isNoteSaving || !isFolderSelected}>
                 Add note
               </PrimaryButton>
             </MobileComposerCard>

@@ -14,6 +14,7 @@ type NoteItemProps = {
   onPreviewLoad?: () => void;
   isMenuOpen: boolean;
   isDeleting: boolean;
+  isSaving: boolean;
   isEditing: boolean;
   isUpdating: boolean;
   editingContent: string;
@@ -37,6 +38,7 @@ export default function NoteItem({
   onPreviewLoad,
   isMenuOpen,
   isDeleting,
+  isSaving,
   isEditing,
   isUpdating,
   editingContent,
@@ -53,7 +55,7 @@ export default function NoteItem({
   const thumbnailUrl = videoId ? getYouTubeThumbnailUrl(videoId) : '';
   const watchUrl = videoId ? getYouTubeWatchUrl(videoId) : '';
   const contentLink = getContentLink(note.content);
-  const isNoteBusy = isDeleting || isUpdating;
+  const isNoteBusy = isDeleting || isSaving || isUpdating;
 
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
@@ -267,7 +269,11 @@ export default function NoteItem({
             )}
           </>
         )}
-        <NoteMeta>{formatDateTime(note.created_at)}</NoteMeta>
+        <NoteMetaRow>
+          <NoteMeta>{formatDateTime(note.created_at)}</NoteMeta>
+          {isSaving ? <NoteStatus $kind="saving">Saving...</NoteStatus> : null}
+          {isDeleting ? <NoteStatus $kind="deleting">Deleting...</NoteStatus> : null}
+        </NoteMetaRow>
       </NoteCard>
     </NoteSwipeShell>
   );
@@ -506,7 +512,20 @@ const NoteLink = styled.a`
   }
 `;
 
+const NoteMetaRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+`;
+
 const NoteMeta = styled.span`
   font-size: 12px;
   color: var(--muted);
+`;
+
+const NoteStatus = styled.span<{ $kind: 'saving' | 'deleting' }>`
+  font-size: 12px;
+  font-weight: 700;
+  color: ${({ $kind }) => ($kind === 'saving' ? '#0369a1' : 'var(--danger)')};
 `;

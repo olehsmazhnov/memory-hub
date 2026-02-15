@@ -210,7 +210,8 @@ export default function NotesPanel({
         note={note}
         onPreviewLoad={onPreviewLoad}
         isMenuOpen={openNoteMenuId === note.id}
-        isDeleting={noteIdBeingDeleted === note.id}
+        isDeleting={note.ui_status === 'deleting' || noteIdBeingDeleted === note.id}
+        isSaving={note.ui_status === 'saving'}
         isEditing={isEditing}
         editingContent={editingNoteContent}
         isUpdating={isEditing && isNoteUpdating}

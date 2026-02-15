@@ -153,39 +153,55 @@ export default function useNotes({
       return;
     }
 
-    if (!noteContent.trim()) {
+    const trimmedNoteContent = noteContent.trim();
+
+    if (!trimmedNoteContent) {
       onError('Note content is required.');
       return;
     }
 
-    setIsNoteSaving(true);
-    const { data, error } = await supabase
-      .from('notes')
-      .insert({
-        content: noteContent.trim(),
-        folder_id: activeFolderId,
-        user_id: session.user.id
-      })
-      .select('*')
-      .single();
-
-    if (error) {
-      onError(error.message);
-      setIsNoteSaving(false);
-      return;
-    }
+    const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const optimisticNote: Note = {
+      id: tempId,
+      folder_id: activeFolderId,
+      user_id: session.user.id,
+      content: trimmedNoteContent,
+      created_at: new Date().toISOString(),
+      ui_status: 'saving'
+    };
 
     setNoteContent('');
-    onInfo('Note added.');
-    setIsNoteSaving(false);
+    setNotes((current) => [...current, optimisticNote]);
     onFolderMessageCountChange?.(activeFolderId, 1);
 
-    if (data) {
-      setNotes((current) => [...current, data]);
-      return;
-    }
+    void (async () => {
+      const { data, error } = await supabase
+        .from('notes')
+        .insert({
+          content: trimmedNoteContent,
+          folder_id: activeFolderId,
+          user_id: session.user.id
+        })
+        .select('*')
+        .single();
 
-    loadNotes(session.user.id, activeFolderId);
+      if (error) {
+        setNotes((currentNotes) => currentNotes.filter((note) => note.id !== tempId));
+        onFolderMessageCountChange?.(activeFolderId, -1);
+        onError(error.message);
+        return;
+      }
+
+      if (data) {
+        setNotes((currentNotes) =>
+          currentNotes.map((note) => (note.id === tempId ? { ...data, ui_status: undefined } : note))
+        );
+        onInfo('Note added.');
+        return;
+      }
+
+      loadNotes(session.user.id, activeFolderId);
+    })();
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -200,30 +216,40 @@ export default function useNotes({
     const folderIdForDeletedNote = noteToDelete?.folder_id ?? activeFolderId;
 
     setNoteIdBeingDeleted(noteId);
-    const { error } = await supabase
-      .from('notes')
-      .delete()
-      .eq('id', noteId)
-      .eq('user_id', session.user.id);
-
-    if (error) {
-      onError(error.message);
-      setNoteIdBeingDeleted(null);
-      return;
-    }
-
-    setNotes((current) => current.filter((note) => note.id !== noteId));
+    setNotes((currentNotes) =>
+      currentNotes.map((note) => (note.id === noteId ? { ...note, ui_status: 'deleting' } : note))
+    );
     setOpenNoteMenuId(null);
-    setNoteIdBeingDeleted(null);
+
     if (editingNoteId === noteId) {
       setEditingNoteId(null);
       setEditingNoteContent('');
       setIsNoteUpdating(false);
     }
-    if (folderIdForDeletedNote) {
-      onFolderMessageCountChange?.(folderIdForDeletedNote, -1);
-    }
-    onInfo('Note deleted.');
+
+    void (async () => {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId)
+        .eq('user_id', session.user.id);
+
+      if (error) {
+        setNotes((currentNotes) =>
+          currentNotes.map((note) => (note.id === noteId ? { ...note, ui_status: undefined } : note))
+        );
+        onError(error.message);
+        setNoteIdBeingDeleted((currentNoteId) => (currentNoteId === noteId ? null : currentNoteId));
+        return;
+      }
+
+      setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+      setNoteIdBeingDeleted((currentNoteId) => (currentNoteId === noteId ? null : currentNoteId));
+      if (folderIdForDeletedNote) {
+        onFolderMessageCountChange?.(folderIdForDeletedNote, -1);
+      }
+      onInfo('Note deleted.');
+    })();
   };
 
   const handleStartNoteEdit = (note: Note) => {

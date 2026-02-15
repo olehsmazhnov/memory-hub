@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useRef, useState, type TouchEvent } from 'react';
 import styled from 'styled-components';
 import type { Note } from '../lib/types';
 import { formatDateTime } from '../lib/utils/date';
@@ -25,6 +26,12 @@ type NoteItemProps = {
   onDelete: () => void;
 };
 
+const SWIPE_TRIGGER_PX = 92;
+const SWIPE_MAX_PX = 132;
+const SWIPE_CANCEL_VERTICAL_PX = 52;
+
+type SwipeDirection = 'left' | 'right' | null;
+
 export default function NoteItem({
   note,
   onPreviewLoad,
@@ -48,118 +55,244 @@ export default function NoteItem({
   const contentLink = getContentLink(note.content);
   const isNoteBusy = isDeleting || isUpdating;
 
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const isSwipeTrackingRef = useRef(false);
+
+  const swipeDirection: SwipeDirection = swipeOffset > 0 ? 'right' : swipeOffset < 0 ? 'left' : null;
+  const absSwipeOffset = Math.abs(swipeOffset);
+  const swipeProgress = Math.min(absSwipeOffset / SWIPE_TRIGGER_PX, 1);
+
+  const swipeHint = useMemo(() => {
+    if (swipeDirection === 'right') {
+      return 'Edit';
+    }
+
+    if (swipeDirection === 'left') {
+      return 'Delete';
+    }
+
+    return '';
+  }, [swipeDirection]);
+
+  const resetSwipeState = () => {
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    isSwipeTrackingRef.current = false;
+    setSwipeOffset(0);
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (isEditing || isNoteBusy || event.touches.length !== 1) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    isSwipeTrackingRef.current = true;
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLElement>) => {
+    if (!isSwipeTrackingRef.current) {
+      return;
+    }
+
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    const touch = event.touches[0];
+
+    if (startX === null || startY === null || !touch) {
+      resetSwipeState();
+      return;
+    }
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+
+    if (Math.abs(deltaY) > SWIPE_CANCEL_VERTICAL_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
+      resetSwipeState();
+      return;
+    }
+
+    if (Math.abs(deltaX) > 14 && Math.abs(deltaX) > Math.abs(deltaY) && event.cancelable) {
+      event.preventDefault();
+    }
+
+    setSwipeOffset(Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, deltaX)));
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSwipeTrackingRef.current) {
+      return;
+    }
+
+    const finalOffset = swipeOffset;
+    resetSwipeState();
+
+    if (finalOffset >= SWIPE_TRIGGER_PX) {
+      onStartEdit();
+      return;
+    }
+
+    if (finalOffset <= -SWIPE_TRIGGER_PX) {
+      onDelete();
+    }
+  };
+
   return (
-    <NoteCard>
-      <NoteHeader>
-        {!isEditing ? (
-          <NoteMenu
-            tabIndex={-1}
-            onBlur={(event) => {
-              const nextTarget = event.relatedTarget as Node | null;
-              if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
-                onCloseMenu();
-              }
-            }}
-          >
-            <NoteMenuButton
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={isMenuOpen}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleMenu();
+    <NoteSwipeShell
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={resetSwipeState}
+    >
+      <SwipeBackground $direction={swipeDirection} $progress={swipeProgress}>
+        <SwipeLabel $align={swipeDirection === 'right' ? 'left' : 'right'}>{swipeHint}</SwipeLabel>
+      </SwipeBackground>
+      <NoteCard style={{ transform: swipeOffset ? `translateX(${swipeOffset}px)` : undefined }}>
+        <NoteHeader>
+          {!isEditing ? (
+            <NoteMenu
+              tabIndex={-1}
+              onBlur={(event) => {
+                const nextTarget = event.relatedTarget as Node | null;
+                if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+                  onCloseMenu();
+                }
+              }}
+            >
+              <NoteMenuButton
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={isMenuOpen}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleMenu();
+                }}
+                disabled={isNoteBusy}
+              >
+                <MenuIcon />
+              </NoteMenuButton>
+              {isMenuOpen ? (
+                <NoteMenuList role="menu">
+                  <NoteMenuItem
+                    type="button"
+                    role="menuitem"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCloseMenu();
+                      onStartEdit();
+                    }}
+                    disabled={isNoteBusy}
+                  >
+                    Edit
+                  </NoteMenuItem>
+                  <NoteMenuDangerItem
+                    type="button"
+                    role="menuitem"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCloseMenu();
+                      onDelete();
+                    }}
+                    disabled={isNoteBusy}
+                  >
+                    Delete
+                  </NoteMenuDangerItem>
+                </NoteMenuList>
+              ) : null}
+            </NoteMenu>
+          ) : null}
+        </NoteHeader>
+        {isEditing ? (
+          <>
+            <NoteEditTextArea
+              value={editingContent}
+              onChange={(event) => onEditingContentChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  onCancelEdit();
+                }
+
+                if ((event.key === 'Enter' && event.ctrlKey) || (event.key === 'Enter' && event.metaKey)) {
+                  event.preventDefault();
+                  onSaveEdit();
+                }
               }}
               disabled={isNoteBusy}
-            >
-              <MenuIcon />
-            </NoteMenuButton>
-            {isMenuOpen ? (
-              <NoteMenuList role="menu">
-                <NoteMenuItem
-                  type="button"
-                  role="menuitem"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onCloseMenu();
-                    onStartEdit();
-                  }}
-                  disabled={isNoteBusy}
-                >
-                  Edit
-                </NoteMenuItem>
-                <NoteMenuDangerItem
-                  type="button"
-                  role="menuitem"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onCloseMenu();
-                    onDelete();
-                  }}
-                  disabled={isNoteBusy}
-                >
-                  Delete
-                </NoteMenuDangerItem>
-              </NoteMenuList>
+              autoFocus
+            />
+            <NoteEditActions>
+              <NoteActionButton type="button" onClick={onSaveEdit} disabled={isNoteBusy}>
+                {isUpdating ? 'Saving...' : 'Save'}
+              </NoteActionButton>
+              <NoteActionButton type="button" onClick={onCancelEdit} disabled={isNoteBusy}>
+                Cancel
+              </NoteActionButton>
+            </NoteEditActions>
+          </>
+        ) : (
+          <>
+            {isYouTubePreview ? (
+              <VideoPreview href={watchUrl} target="_blank" rel="noreferrer">
+                <VideoThumbnail
+                  src={thumbnailUrl}
+                  alt={YOUTUBE_PREVIEW_ALT}
+                  loading="lazy"
+                  onLoad={onPreviewLoad}
+                />
+                <PreviewBadge>YT</PreviewBadge>
+              </VideoPreview>
             ) : null}
-          </NoteMenu>
-        ) : null}
-      </NoteHeader>
-      {isEditing ? (
-        <>
-          <NoteEditTextArea
-            value={editingContent}
-            onChange={(event) => onEditingContentChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                onCancelEdit();
-              }
-
-              if ((event.key === 'Enter' && event.ctrlKey) || (event.key === 'Enter' && event.metaKey)) {
-                event.preventDefault();
-                onSaveEdit();
-              }
-            }}
-            disabled={isNoteBusy}
-            autoFocus
-          />
-          <NoteEditActions>
-            <NoteActionButton type="button" onClick={onSaveEdit} disabled={isNoteBusy}>
-              {isUpdating ? 'Saving...' : 'Save'}
-            </NoteActionButton>
-            <NoteActionButton type="button" onClick={onCancelEdit} disabled={isNoteBusy}>
-              Cancel
-            </NoteActionButton>
-          </NoteEditActions>
-        </>
-      ) : (
-        <>
-          {isYouTubePreview ? (
-            <VideoPreview href={watchUrl} target="_blank" rel="noreferrer">
-              <VideoThumbnail
-                src={thumbnailUrl}
-                alt={YOUTUBE_PREVIEW_ALT}
-                loading="lazy"
-                onLoad={onPreviewLoad}
-              />
-              <PreviewBadge>YT</PreviewBadge>
-            </VideoPreview>
-          ) : null}
-          {contentLink ? (
-            <NoteLink href={contentLink} target="_blank" rel="noreferrer">
-              {note.content}
-            </NoteLink>
-          ) : (
-            <NoteContent>{note.content}</NoteContent>
-          )}
-        </>
-      )}
-      <NoteMeta>{formatDateTime(note.created_at)}</NoteMeta>
-    </NoteCard>
+            {contentLink ? (
+              <NoteLink href={contentLink} target="_blank" rel="noreferrer">
+                {note.content}
+              </NoteLink>
+            ) : (
+              <NoteContent>{note.content}</NoteContent>
+            )}
+          </>
+        )}
+        <NoteMeta>{formatDateTime(note.created_at)}</NoteMeta>
+      </NoteCard>
+    </NoteSwipeShell>
   );
 }
 
-const NoteCard = styled.article`
+const NoteSwipeShell = styled.article`
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  touch-action: pan-y;
+`;
+
+const SwipeBackground = styled.div<{ $direction: SwipeDirection; $progress: number }>`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: ${({ $direction }) => ($direction === 'right' ? 'flex-start' : 'flex-end')};
+  padding: 0 16px;
+  background: ${({ $direction }) =>
+    $direction === 'right' ? 'rgba(22, 163, 74, 0.88)' : $direction === 'left' ? 'rgba(220, 38, 38, 0.88)' : 'transparent'};
+  opacity: ${({ $progress }) => $progress};
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+`;
+
+const SwipeLabel = styled.span<{ $align: 'left' | 'right' }>`
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: ${({ $align }) => $align};
+`;
+
+const NoteCard = styled.div`
   border-radius: 14px;
   border: 1px solid var(--border);
   padding: 14px 16px;
@@ -167,6 +300,7 @@ const NoteCard = styled.article`
   flex-direction: column;
   gap: 8px;
   background: #f9fbff;
+  transition: transform 0.16s ease;
 
   @media (max-width: 720px) {
     padding: 12px 14px;

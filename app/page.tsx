@@ -264,7 +264,7 @@ export default function Page() {
     }
 
     const blockedTargetSelector =
-      'input, textarea, select, button, a, [role="button"], [contenteditable="true"]';
+      'input, textarea, select, button, a, [role="button"], [contenteditable="true"], [data-disable-nav-swipe="true"]';
 
     return !target.closest(blockedTargetSelector);
   };

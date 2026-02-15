@@ -84,6 +84,8 @@ export default function NoteItem({
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+
     if (isEditing || isNoteBusy || event.touches.length !== 1) {
       return;
     }
@@ -95,6 +97,8 @@ export default function NoteItem({
   };
 
   const handleTouchMove = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+
     if (!isSwipeTrackingRef.current) {
       return;
     }
@@ -123,7 +127,9 @@ export default function NoteItem({
     setSwipeOffset(Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, deltaX)));
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+
     if (!isSwipeTrackingRef.current) {
       return;
     }
@@ -141,12 +147,17 @@ export default function NoteItem({
     }
   };
 
+  const handleTouchCancel = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+    resetSwipeState();
+  };
+
   return (
     <NoteSwipeShell
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onTouchCancel={resetSwipeState}
+      onTouchCancel={handleTouchCancel}
     >
       <SwipeBackground $direction={swipeDirection} $progress={swipeProgress}>
         <SwipeLabel $align={swipeDirection === 'right' ? 'left' : 'right'}>{swipeHint}</SwipeLabel>
@@ -262,7 +273,9 @@ export default function NoteItem({
   );
 }
 
-const NoteSwipeShell = styled.article`
+const NoteSwipeShell = styled.article.attrs({
+  'data-disable-nav-swipe': 'true'
+})`
   position: relative;
   border-radius: 14px;
   overflow: hidden;

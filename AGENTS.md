@@ -31,3 +31,34 @@
 - if u change sql, add migrations in different file separatly, plus make one big if I need to start from begininng
 - write very secure code - it should pass security checks
 - update version in package.json and next.config.js each time you make changes
+
+# UI/UX Guardrails (Always On)
+
+## Accessibility
+- Meet WCAG 2.2 AA.
+- Ensure keyboard navigation for all controls.
+- Keep visible focus states.
+- Include loading, empty, error, success states.
+
+## UX Rules
+- Clear primary CTA per screen.
+- Prefer simple flows over dense UI.
+- Validate forms inline with actionable errors.
+- Confirm destructive actions or provide undo.
+
+## Delivery Format
+For each task, output:
+1) Assumptions
+2) User flow
+3) UI structure
+4) Component states
+5) Accessibility checklist
+6) Dev handoff notes
+
+## Quality Gate
+Before final answer, self-review:
+- Task clarity
+- Hierarchy
+- Error recovery
+- Accessibility
+- Responsive behavior

@@ -327,6 +327,7 @@ export default function Sidebar({
       <SidebarBody
         $isMobileLayout={isMobileLayout}
         $isCreateFormOpen={isCreateFormOpen}
+        $isSidebarCollapsed={isDesktopCollapsed}
         onTouchStart={handleSidebarTouchStart}
         onTouchMove={handleSidebarTouchMove}
         onTouchEnd={handleSidebarTouchEnd}
@@ -409,41 +410,43 @@ export default function Sidebar({
         </SidebarFooter>
       ) : null}
 
-      <MobileComposerArea $isMobileLayout={isMobileLayout}>
-        {isCreateFormOpen ? (
-          <MobileComposerCard>
-            <TextInput
-              type="text"
-              placeholder="New folder title"
-              value={folderTitle}
-              onChange={(event) => onFolderTitleChange(event.target.value)}
-              onKeyDown={handleCreateFolderKeyDown}
-            />
-            <FolderColorPicker>
-              {FOLDER_COLOR_OPTIONS.map((colorOption) => (
-                <FolderColorOption
-                  key={colorOption}
-                  type="button"
-                  aria-label={`Set new folder color to ${colorOption}`}
-                  $color={colorOption}
-                  $isActive={folderColor.toLowerCase() === colorOption.toLowerCase()}
-                  onClick={() => onFolderColorChange(colorOption)}
-                />
-              ))}
-            </FolderColorPicker>
-            <PrimaryButton onClick={onCreateFolder} disabled={isFolderSaving || isFolderReordering}>
-              Add
-            </PrimaryButton>
-          </MobileComposerCard>
-        ) : null}
-        <MobileAddButton
-          type="button"
-          aria-label={isCreateFormOpen ? 'Close folder form' : 'Open folder form'}
-          onClick={handleToggleCreateForm}
-        >
-          {isCreateFormOpen ? 'x' : '+'}
-        </MobileAddButton>
-      </MobileComposerArea>
+      {isMobileLayout ? (
+        <MobileComposerArea $isMobileLayout={isMobileLayout}>
+          {isCreateFormOpen ? (
+            <MobileComposerCard>
+              <TextInput
+                type="text"
+                placeholder="New folder title"
+                value={folderTitle}
+                onChange={(event) => onFolderTitleChange(event.target.value)}
+                onKeyDown={handleCreateFolderKeyDown}
+              />
+              <FolderColorPicker>
+                {FOLDER_COLOR_OPTIONS.map((colorOption) => (
+                  <FolderColorOption
+                    key={colorOption}
+                    type="button"
+                    aria-label={`Set new folder color to ${colorOption}`}
+                    $color={colorOption}
+                    $isActive={folderColor.toLowerCase() === colorOption.toLowerCase()}
+                    onClick={() => onFolderColorChange(colorOption)}
+                  />
+                ))}
+              </FolderColorPicker>
+              <PrimaryButton onClick={onCreateFolder} disabled={isFolderSaving || isFolderReordering}>
+                Add
+              </PrimaryButton>
+            </MobileComposerCard>
+          ) : null}
+          <MobileAddButton
+            type="button"
+            aria-label={isCreateFormOpen ? 'Close folder form' : 'Open folder form'}
+            onClick={handleToggleCreateForm}
+          >
+            {isCreateFormOpen ? 'x' : '+'}
+          </MobileAddButton>
+        </MobileComposerArea>
+      ) : null}
 
       {isDeleteModalOpen ? (
         <DeleteOverlay
@@ -500,6 +503,7 @@ const SidebarShell = styled.aside`
   gap: 18px;
   min-height: 0;
   position: relative;
+  overflow-x: hidden;
 
   @media (max-width: 980px) {
     padding: 20px;
@@ -559,21 +563,22 @@ const FolderColorOption = styled.button<{ $color: string; $isActive: boolean }>`
     $isActive ? '0 0 0 2px #fff inset, 0 0 0 1px rgba(28, 39, 51, 0.85)' : '0 0 0 1px rgba(28, 39, 51, 0.2)'};
 `;
 
-const SidebarBody = styled.div<{ $isMobileLayout: boolean; $isCreateFormOpen: boolean }>`
+const SidebarBody = styled.div<{ $isMobileLayout: boolean; $isCreateFormOpen: boolean; $isSidebarCollapsed: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 6px;
-  margin-right: -6px;
+  overflow-x: hidden;
+  padding-right: ${({ $isSidebarCollapsed }) => ($isSidebarCollapsed ? '0' : '6px')};
+  margin-right: ${({ $isSidebarCollapsed }) => ($isSidebarCollapsed ? '0' : '-6px')};
   padding-bottom: ${({ $isMobileLayout, $isCreateFormOpen }) => {
     if ($isMobileLayout) {
       return $isCreateFormOpen ? '212px' : '90px';
     }
 
-    return $isCreateFormOpen ? '228px' : '96px';
+    return '16px';
   }};
 
   @media (max-width: 720px) {

@@ -1,6 +1,6 @@
 const packageJson = require('./package.json');
 const isProduction = process.env.NODE_ENV === 'production';
-const appVersion = '0.1.21';
+const appVersion = '0.1.22';
 
 if (packageJson.version !== appVersion) {
   throw new Error(

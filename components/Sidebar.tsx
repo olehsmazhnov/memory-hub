@@ -397,35 +397,48 @@ export default function Sidebar({
 
       {!isMobileLayout ? (
         <>
-          {isCreateFormOpen && !isDesktopCollapsed ? (
-            <DesktopComposerCard>
-              <TextInput
-                type="text"
-                placeholder="New folder title"
-                value={folderTitle}
-                onChange={(event) => onFolderTitleChange(event.target.value)}
-                onKeyDown={handleCreateFolderKeyDown}
-              />
-              <FolderColorPicker>
-                {FOLDER_COLOR_OPTIONS.map((colorOption) => (
-                  <FolderColorOption
-                    key={colorOption}
-                    type="button"
-                    aria-label={`Set new folder color to ${colorOption}`}
-                    $color={colorOption}
-                    $isActive={folderColor.toLowerCase() === colorOption.toLowerCase()}
-                    onClick={() => onFolderColorChange(colorOption)}
-                  />
-                ))}
-              </FolderColorPicker>
-              <PrimaryButton onClick={onCreateFolder} disabled={isFolderSaving || isFolderReordering}>
-                Add
-              </PrimaryButton>
-            </DesktopComposerCard>
-          ) : null}
-
           <SidebarFooter>
-            <FooterActions $isCompact={isDesktopCollapsed}>
+            <SettingsButton
+              type="button"
+              $isActive={isSettingsActive}
+              $isCompact={isDesktopCollapsed}
+              onClick={onToggleSettings}
+              title="Settings"
+            >
+              <SettingsIcon />
+              {!isDesktopCollapsed ? <SettingsLabel>Settings</SettingsLabel> : null}
+            </SettingsButton>
+          </SidebarFooter>
+
+          {!isDesktopCollapsed ? (
+            <DesktopComposerArea>
+              {isCreateFormOpen ? (
+                <DesktopComposerCard>
+                  <TextInput
+                    type="text"
+                    placeholder="New folder title"
+                    value={folderTitle}
+                    onChange={(event) => onFolderTitleChange(event.target.value)}
+                    onKeyDown={handleCreateFolderKeyDown}
+                  />
+                  <FolderColorPicker>
+                    {FOLDER_COLOR_OPTIONS.map((colorOption) => (
+                      <FolderColorOption
+                        key={colorOption}
+                        type="button"
+                        aria-label={`Set new folder color to ${colorOption}`}
+                        $color={colorOption}
+                        $isActive={folderColor.toLowerCase() === colorOption.toLowerCase()}
+                        onClick={() => onFolderColorChange(colorOption)}
+                      />
+                    ))}
+                  </FolderColorPicker>
+                  <PrimaryButton onClick={onCreateFolder} disabled={isFolderSaving || isFolderReordering}>
+                    Add
+                  </PrimaryButton>
+                </DesktopComposerCard>
+              ) : null}
+
               <AddFolderButton
                 type="button"
                 $isCompact={isDesktopCollapsed}
@@ -436,19 +449,8 @@ export default function Sidebar({
               >
                 {isCreateFormOpen ? 'x' : '+'}
               </AddFolderButton>
-
-              <SettingsButton
-                type="button"
-                $isActive={isSettingsActive}
-                $isCompact={isDesktopCollapsed}
-                onClick={onToggleSettings}
-                title="Settings"
-              >
-                <SettingsIcon />
-                {!isDesktopCollapsed ? <SettingsLabel>Settings</SettingsLabel> : null}
-              </SettingsButton>
-            </FooterActions>
-          </SidebarFooter>
+            </DesktopComposerArea>
+          ) : null}
         </>
       ) : null}
 
@@ -688,7 +690,20 @@ const SidebarFooter = styled.div`
   margin-top: auto;
 `;
 
+const DesktopComposerArea = styled.div`
+  position: absolute;
+  right: 24px;
+  bottom: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  z-index: 5;
+  pointer-events: none;
+`;
+
 const DesktopComposerCard = styled.div`
+  width: min(320px, calc(100% - 24px));
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 16px;
@@ -697,13 +712,7 @@ const DesktopComposerCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
-`;
-
-const FooterActions = styled.div<{ $isCompact: boolean }>`
-  display: flex;
-  gap: 8px;
-  justify-content: ${({ $isCompact }) => ($isCompact ? 'center' : 'space-between')};
-  align-items: center;
+  pointer-events: auto;
 `;
 
 const AddFolderButton = styled.button<{ $isCompact: boolean; $isOpen: boolean }>`

@@ -734,7 +734,7 @@ const AddFolderButton = styled.button<{ $isCompact: boolean; $isOpen: boolean }>
 
 const SettingsButton = styled.button<{ $isActive?: boolean; $isCompact?: boolean }>`
   margin: ${({ $isCompact }) => ($isCompact ? '0 auto' : '0')};
-  width: ${({ $isCompact }) => ($isCompact ? '44px' : 'auto')};
+  width: ${({ $isCompact }) => ($isCompact ? '44px' : '100%')};
   flex: ${({ $isCompact }) => ($isCompact ? '0 0 auto' : '1 1 auto')};
   border-radius: 14px;
   border: 1px solid ${({ $isActive }) => ($isActive ? 'rgba(42, 158, 244, 0.45)' : 'var(--border)')};

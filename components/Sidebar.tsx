@@ -432,8 +432,9 @@ export default function Sidebar({
                 $isOpen={isCreateFormOpen}
                 onClick={handleToggleCreateForm}
                 title={isCreateFormOpen ? 'Close folder form' : 'Open folder form'}
+                aria-label={isCreateFormOpen ? 'Close folder form' : 'Open folder form'}
               >
-                {isDesktopCollapsed ? (isCreateFormOpen ? 'x' : '+') : isCreateFormOpen ? 'Close' : 'Add folder'}
+                {isCreateFormOpen ? 'x' : '+'}
               </AddFolderButton>
 
               <SettingsButton
@@ -706,19 +707,20 @@ const FooterActions = styled.div<{ $isCompact: boolean }>`
 `;
 
 const AddFolderButton = styled.button<{ $isCompact: boolean; $isOpen: boolean }>`
-  width: ${({ $isCompact }) => ($isCompact ? '44px' : 'auto')};
-  min-width: ${({ $isCompact }) => ($isCompact ? '44px' : '112px')};
-  height: 44px;
-  border-radius: 14px;
-  border: 1px solid ${({ $isOpen }) => ($isOpen ? 'rgba(42, 158, 244, 0.45)' : 'var(--border)')};
-  background: ${({ $isOpen }) => ($isOpen ? 'rgba(42, 158, 244, 0.12)' : '#fff')};
-  color: ${({ $isOpen }) => ($isOpen ? 'var(--accent-dark)' : 'var(--text)')};
-  font-size: 14px;
-  font-weight: 600;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: none;
+  background: ${({ $isOpen }) => ($isOpen ? 'var(--accent-dark)' : 'var(--accent)')};
+  color: #fff;
+  font-size: 30px;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 12px 26px rgba(28, 127, 209, 0.28);
 `;
 
 const SettingsButton = styled.button<{ $isActive?: boolean; $isCompact?: boolean }>`
